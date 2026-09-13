@@ -21,6 +21,19 @@ export const HomePage: React.FC = () => {
 
   // Filter courses by department, trimester, and search query
   const filteredCourses = useMemo(() => {
+    // 1. If searching, perform universal global search across all departments and trimesters!
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().replace(/[\s-]/g, '');
+      return courses.filter((course) => {
+        const code = course.code.toLowerCase().replace(/[\s-]/g, '');
+        const title = course.title.toLowerCase().replace(/[\s-]/g, '');
+        const abbr = (course.abbr || '').toLowerCase().replace(/[\s-]/g, '');
+        const dept = course.department.toLowerCase().replace(/[\s-]/g, '');
+        return code.includes(q) || title.includes(q) || abbr.includes(q) || dept.includes(q);
+      });
+    }
+
+    // 2. When not searching, filter by the selected department and trimester
     return courses.filter((course) => {
       // Department filter
       if (selectedDepartment !== 'All' && course.department.toLowerCase() !== selectedDepartment.toLowerCase()) {
@@ -29,14 +42,6 @@ export const HomePage: React.FC = () => {
       // Trimester filter
       if (selectedTrimester !== 'all' && course.trimester !== selectedTrimester) {
         return false;
-      }
-      // Search query
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().replace(/[\s-]/g, '');
-        const code = course.code.toLowerCase().replace(/[\s-]/g, '');
-        const title = course.title.toLowerCase().replace(/[\s-]/g, '');
-        const abbr = (course.abbr || '').toLowerCase().replace(/[\s-]/g, '');
-        return code.includes(q) || title.includes(q) || abbr.includes(q);
       }
       return true;
     });
@@ -121,12 +126,16 @@ export const HomePage: React.FC = () => {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-              Select Department
+              {searchQuery ? 'Global Search (Searching All Departments & Trimesters)' : 'Select Department'}
             </h3>
             {searchQuery && (
-              <span className="text-xs text-[#FF6600] font-medium">
-                Searching for: "{searchQuery}"
-              </span>
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="text-xs text-[#FF6600] font-semibold hover:underline flex items-center space-x-1"
+              >
+                <span>Searching: &quot;{searchQuery}&quot; (Clear &times;)</span>
+              </button>
             )}
           </div>
           <DepartmentFilter />
