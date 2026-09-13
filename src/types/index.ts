@@ -3,9 +3,17 @@ export type Department = 'CSE' | 'DS' | 'EEE' | 'BBA' | 'Civil' | string;
 export type ResourceType = 
   | 'handnote'
   | 'question_mid'
+  | 'mid_question'
+  | 'mid_solve'
   | 'question_final'
+  | 'final_question'
+  | 'final_solve'
   | 'ct'
+  | 'ct_question'
+  | 'ct_solve'
   | 'assignment'
+  | 'assignment_question'
+  | 'assignment_solve'
   | 'cheatsheet';
 
 export interface Contributor {

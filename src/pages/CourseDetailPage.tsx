@@ -20,14 +20,29 @@ import { ZipDownloadService, DownloadProgress } from '../services/zipDownloadSer
 import { formatTrimesterCode } from '../utils/trimesterHelper';
 
 type CategoryKey = 
-  | 'mid_question'
-  | 'final_question'
-  | 'mid_solve'
-  | 'final_solve'
   | 'handnote'
-  | 'ct'
-  | 'assignment'
+  | 'mid_question'
+  | 'mid_solve'
+  | 'final_question'
+  | 'final_solve'
+  | 'ct_question'
+  | 'ct_solve'
+  | 'assignment_question'
+  | 'assignment_solve'
   | 'cheatsheet';
+
+const CATEGORY_ORDER: CategoryKey[] = [
+  'handnote',
+  'mid_question',
+  'mid_solve',
+  'final_question',
+  'final_solve',
+  'ct_question',
+  'ct_solve',
+  'assignment_question',
+  'assignment_solve',
+  'cheatsheet'
+];
 
 export const CourseDetailPage: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
@@ -57,51 +72,63 @@ export const CourseDetailPage: React.FC = () => {
     return resources.filter(r => r.courseId === course.id);
   }, [course, resources]);
 
-  // Category counts
+  // Category counts and categorization in strict user-requested order
   const categoryData = useMemo(() => {
-    const midQuestions = courseResources.filter(r => r.type === 'question_mid' && !r.hasSolution);
-    const finalQuestions = courseResources.filter(r => r.type === 'question_final' && !r.hasSolution);
-    const midSolves = courseResources.filter(r => r.type === 'question_mid' && r.hasSolution);
-    const finalSolves = courseResources.filter(r => r.type === 'question_final' && r.hasSolution);
-    
-    // Also include question items that serve as question papers
-    const allMidQuestions = courseResources.filter(r => r.type === 'question_mid');
-    const allFinalQuestions = courseResources.filter(r => r.type === 'question_final');
-
+    // 1. Handnotes
     const handnotes = courseResources.filter(r => r.type === 'handnote');
-    const cts = courseResources.filter(r => r.type === 'ct');
-    const assignments = courseResources.filter(r => r.type === 'assignment');
+
+    // 2. Mid Questions (question papers)
+    const midQuestions = courseResources.filter(r => 
+      (r.type === 'question_mid' || r.type === 'mid_question') && 
+      (!r.hasSolution || r.type === 'mid_question' || r.title.toLowerCase().includes('question') || !r.title.toLowerCase().includes('solve'))
+    );
+
+    // 3. Mid Solves (verified solutions)
+    const midSolves = courseResources.filter(r => 
+      r.type === 'mid_solve' || 
+      ((r.type === 'question_mid' || r.term === 'mid') && (r.hasSolution || r.title.toLowerCase().includes('solve') || r.title.toLowerCase().includes('solution')))
+    );
+
+    // 4. Final Questions
+    const finalQuestions = courseResources.filter(r => 
+      (r.type === 'question_final' || r.type === 'final_question') && 
+      (!r.hasSolution || r.type === 'final_question' || r.title.toLowerCase().includes('question') || !r.title.toLowerCase().includes('solve'))
+    );
+
+    // 5. Final Solves
+    const finalSolves = courseResources.filter(r => 
+      r.type === 'final_solve' || 
+      ((r.type === 'question_final' || r.term === 'final') && (r.hasSolution || r.title.toLowerCase().includes('solve') || r.title.toLowerCase().includes('solution')))
+    );
+
+    // 6. CT Questions
+    const ctQuestions = courseResources.filter(r => 
+      (r.type === 'ct' || r.type === 'ct_question') && 
+      (!r.hasSolution || r.type === 'ct_question' || r.title.toLowerCase().includes('question') || !r.title.toLowerCase().includes('solve'))
+    );
+
+    // 7. CT Solves
+    const ctSolves = courseResources.filter(r => 
+      r.type === 'ct_solve' || 
+      (r.type === 'ct' && (r.hasSolution || r.title.toLowerCase().includes('solve') || r.title.toLowerCase().includes('solution')))
+    );
+
+    // 8. Assignments
+    const assignments = courseResources.filter(r => 
+      (r.type === 'assignment' || r.type === 'assignment_question') && 
+      (!r.hasSolution || r.type === 'assignment_question' || r.title.toLowerCase().includes('question') || r.title.toLowerCase().includes('specification') || !r.title.toLowerCase().includes('solve'))
+    );
+
+    // 9. Assignment Solves
+    const assignmentSolves = courseResources.filter(r => 
+      r.type === 'assignment_solve' || 
+      (r.type === 'assignment' && (r.hasSolution || r.title.toLowerCase().includes('solve') || r.title.toLowerCase().includes('solution') || r.title.toLowerCase().includes('code')))
+    );
+
+    // 10. Cheat Sheets
     const cheatsheets = courseResources.filter(r => r.type === 'cheatsheet');
 
     return {
-      mid_question: {
-        title: 'Mid-Term Questions',
-        badge: 'MID',
-        count: allMidQuestions.length,
-        items: allMidQuestions,
-        iconType: 'question' as const
-      },
-      final_question: {
-        title: 'Final Questions',
-        badge: 'FINAL',
-        count: allFinalQuestions.length,
-        items: allFinalQuestions,
-        iconType: 'question' as const
-      },
-      mid_solve: {
-        title: 'Mid-Term Solutions',
-        badge: 'MID',
-        count: midSolves.length,
-        items: midSolves,
-        iconType: 'solution' as const
-      },
-      final_solve: {
-        title: 'Final Solutions',
-        badge: 'FINAL',
-        count: finalSolves.length,
-        items: finalSolves,
-        iconType: 'solution' as const
-      },
       handnote: {
         title: 'Handwritten Notes',
         badge: 'NOTE',
@@ -109,19 +136,61 @@ export const CourseDetailPage: React.FC = () => {
         items: handnotes,
         iconType: 'handnote' as const
       },
-      ct: {
+      mid_question: {
+        title: 'Mid-Term Questions',
+        badge: 'MID',
+        count: midQuestions.length,
+        items: midQuestions,
+        iconType: 'question' as const
+      },
+      mid_solve: {
+        title: 'Mid-Term Solutions',
+        badge: 'MID SOLVE',
+        count: midSolves.length,
+        items: midSolves,
+        iconType: 'solution' as const
+      },
+      final_question: {
+        title: 'Final Questions',
+        badge: 'FINAL',
+        count: finalQuestions.length,
+        items: finalQuestions,
+        iconType: 'question' as const
+      },
+      final_solve: {
+        title: 'Final Solutions',
+        badge: 'FINAL SOLVE',
+        count: finalSolves.length,
+        items: finalSolves,
+        iconType: 'solution' as const
+      },
+      ct_question: {
         title: 'Class Tests (CT)',
         badge: 'CT',
-        count: cts.length,
-        items: cts,
+        count: ctQuestions.length,
+        items: ctQuestions,
         iconType: 'ct' as const
       },
-      assignment: {
-        title: 'Assignments & Solves',
+      ct_solve: {
+        title: 'Class Tests (CT) Solves',
+        badge: 'CT SOLVE',
+        count: ctSolves.length,
+        items: ctSolves,
+        iconType: 'ct_solve' as const
+      },
+      assignment_question: {
+        title: 'Assignments',
         badge: 'ASSIGN',
         count: assignments.length,
         items: assignments,
         iconType: 'assignment' as const
+      },
+      assignment_solve: {
+        title: 'Assignment Solutions',
+        badge: 'ASSIGN SOLVE',
+        count: assignmentSolves.length,
+        items: assignmentSolves,
+        iconType: 'assignment_solve' as const
       },
       cheatsheet: {
         title: 'Formula & Cheat Sheets',
@@ -245,8 +314,8 @@ export const CourseDetailPage: React.FC = () => {
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {(Object.keys(categoryData) as CategoryKey[]).map((key) => {
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-5">
+            {CATEGORY_ORDER.map((key) => {
               const cat = categoryData[key];
               return (
                 <button
@@ -338,8 +407,10 @@ export const CourseDetailPage: React.FC = () => {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
               {activeItems.map((item) => {
-                const codeBadge = item.trimesterCode || (item.ctNumber ? `CT ${item.ctNumber}` : 'PDF');
-                const readableSemester = formatTrimesterCode(item.trimesterCode);
+                const codeBadge = item.trimesterCode 
+                  ? item.trimesterCode 
+                  : (item.ctNumber ? `CT ${item.ctNumber}` : (item.assignmentNumber ? `Assign ${item.assignmentNumber}` : (item.type === 'handnote' ? 'NOTE' : (item.type === 'cheatsheet' ? 'CHEAT' : 'PDF'))));
+                const readableSemester = item.trimesterCode ? formatTrimesterCode(item.trimesterCode) : item.title;
 
                 return (
                   <div

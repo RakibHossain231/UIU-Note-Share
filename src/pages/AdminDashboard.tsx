@@ -243,9 +243,9 @@ export const AdminDashboard: React.FC = () => {
       title: newResource.title.trim(),
       description: newResource.description.trim(),
       trimesterCode: newResource.trimesterCode,
-      ctNumber: newResource.type === 'ct' ? Number(newResource.ctNumber) : undefined,
-      assignmentNumber: newResource.type === 'assignment' ? Number(newResource.assignmentNumber) : undefined,
-      hasSolution: newResource.hasSolution,
+      ctNumber: (newResource.type === 'ct' || newResource.type === 'ct_question' || newResource.type === 'ct_solve') ? Number(newResource.ctNumber) : undefined,
+      assignmentNumber: (newResource.type === 'assignment' || newResource.type === 'assignment_question' || newResource.type === 'assignment_solve') ? Number(newResource.assignmentNumber) : undefined,
+      hasSolution: (newResource.type === 'mid_solve' || newResource.type === 'final_solve' || newResource.type === 'ct_solve' || newResource.type === 'assignment_solve') ? true : newResource.hasSolution,
       storageType: newResource.storageType,
       fileUrl: newResource.fileUrl.trim(),
       fileSize: newResource.fileSize || '3 MB',
@@ -1071,10 +1071,14 @@ export const AdminDashboard: React.FC = () => {
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
                   >
                     <option value="handnote">📝 Handwritten Note</option>
-                    <option value="question_mid">❓ Mid Term Question & Solve</option>
-                    <option value="question_final">❓ Final Exam Question & Solve</option>
-                    <option value="ct">🎯 Class Test (CT)</option>
-                    <option value="assignment">📋 Assignment</option>
+                    <option value="question_mid">❓ Mid Term Question</option>
+                    <option value="mid_solve">💡 Mid Term Solution</option>
+                    <option value="question_final">❓ Final Exam Question</option>
+                    <option value="final_solve">💡 Final Exam Solution</option>
+                    <option value="ct_question">🎯 Class Test (CT) Question</option>
+                    <option value="ct_solve">🎯 Class Test (CT) Solution</option>
+                    <option value="assignment_question">📋 Assignment Question</option>
+                    <option value="assignment_solve">📋 Assignment Solution</option>
                     <option value="cheatsheet">📌 Cheat Sheet / Formula</option>
                   </select>
                 </div>

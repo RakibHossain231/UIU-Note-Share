@@ -12,7 +12,9 @@ import {
   RotateCw,
   HardDrive,
   Cloud,
-  Award
+  Award,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { ResourceItem } from '../types';
 
@@ -26,6 +28,14 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ item, onClose })
   const [darkInvert, setDarkInvert] = useState<boolean>(false);
   const [rotation, setRotation] = useState<number>(0);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [iframeKey, setIframeKey] = useState<number>(0);
+
+  useEffect(() => {
+    setIsLoading(true);
+    setZoom(100);
+    setRotation(0);
+  }, [item]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -39,12 +49,32 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ item, onClose })
 
   if (!item) return null;
 
-  // Format URL for clean in-browser preview
+  // Format URL for clean in-browser preview without triggering browser auto-download
   const getEmbedUrl = (url: string) => {
+    if (!url) return '';
+
+    // 1. Google Drive URLs
     if (url.includes('drive.google.com')) {
+      const matchD = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (matchD && matchD[1]) {
+        return `https://drive.google.com/file/d/${matchD[1]}/preview`;
+      }
+      const matchId = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (matchId && matchId[1]) {
+        return `https://drive.google.com/file/d/${matchId[1]}/preview`;
+      }
       return url.replace(/\/view(\?.*)?$/, '/preview');
     }
-    return url;
+
+    // 2. Already wrapped with Google Docs Viewer
+    if (url.includes('docs.google.com/viewer')) {
+      return url;
+    }
+
+    // 3. For any web URL (GitHub raw, Cloudflare R2, Supabase, S3, etc.)
+    // Wrapping with Google Docs Viewer displays the PDF directly in the browser
+    // and prevents the browser's download manager from auto-downloading the file
+    return `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
   };
 
   const embedUrl = getEmbedUrl(item.fileUrl);
@@ -133,6 +163,18 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ item, onClose })
               </button>
             </div>
 
+            {/* Reload Viewer */}
+            <button
+              onClick={() => {
+                setIsLoading(true);
+                setIframeKey(prev => prev + 1);
+              }}
+              className="p-1.5 sm:p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
+              title="Reload Viewer"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-[#FF6600]' : ''}`} />
+            </button>
+
             {/* Fullscreen */}
             <button
               onClick={toggleFullscreen}
@@ -167,6 +209,20 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ item, onClose })
 
         {/* PDF Viewer Body */}
         <div className="relative flex-1 bg-zinc-900 overflow-auto flex items-center justify-center">
+          
+          {/* Loading Indicator */}
+          {isLoading && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900/90 z-20 space-y-3">
+              <Loader2 className="w-9 h-9 text-[#FF6600] animate-spin" />
+              <p className="text-xs font-bold text-gray-300 tracking-wide">
+                Loading Document in UIU Reader...
+              </p>
+              <p className="text-[11px] text-gray-400 max-w-xs text-center">
+                Rendering preview in-browser without automatic file download.
+              </p>
+            </div>
+          )}
+
           <div 
             className="w-full h-full transition-all duration-200 flex items-center justify-center"
             style={{
@@ -176,17 +232,19 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ item, onClose })
             }}
           >
             <iframe
+              key={iframeKey}
               src={embedUrl}
               title={item.title}
+              onLoad={() => setIsLoading(false)}
               className="w-full h-full border-0 bg-white"
               allow="autoplay"
               loading="lazy"
             />
           </div>
 
-          {/* Cookie / Fallback Banner for Google Drive */}
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/75 backdrop-blur-md px-4 py-2 rounded-full text-xs text-gray-300 flex items-center space-x-2 border border-white/10 shadow-lg pointer-events-auto">
-            <span>If PDF doesn't preview in your browser:</span>
+          {/* Fallback Banner for Google Drive / Viewer */}
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-md px-4 py-2 rounded-full text-xs text-gray-300 flex items-center space-x-2 border border-white/10 shadow-lg pointer-events-auto z-10">
+            <span>If PDF takes time to preview:</span>
             <a 
               href={item.fileUrl} 
               target="_blank" 

@@ -1,7 +1,15 @@
 import React from 'react';
 
 interface CategoryScrollIconProps {
-  type: 'question' | 'solution' | 'handnote' | 'ct' | 'assignment' | 'cheatsheet';
+  type: 
+    | 'question' 
+    | 'solution' 
+    | 'handnote' 
+    | 'ct' 
+    | 'ct_solve' 
+    | 'assignment' 
+    | 'assignment_solve' 
+    | 'cheatsheet';
   color?: string;
   className?: string;
 }
@@ -106,8 +114,26 @@ export const CategoryScrollIcon: React.FC<CategoryScrollIconProps> = ({
         <circle cx="50" cy="50" r="32" stroke={color} strokeWidth="4" fill="none" />
         <circle cx="50" cy="50" r="20" stroke={color} strokeWidth="3.5" fill="none" />
         <circle cx="50" cy="50" r="8" fill={color} />
-        {/* CT Badge */}
+        {/* Crosshair marks */}
         <path d="M50 12V22M50 78V88M12 50H22M78 50H88" stroke={color} strokeWidth="3" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (type === 'ct_solve') {
+    return (
+      <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="46" cy="46" r="28" stroke={color} strokeWidth="4" fill="none" />
+        <circle cx="46" cy="46" r="16" stroke={color} strokeWidth="3" fill="none" />
+        {/* Checkmark solution badge */}
+        <circle cx="68" cy="68" r="14" fill="#FFF9F5" stroke={color} strokeWidth="3.5" />
+        <path
+          d="M62 68L66 72L74 63"
+          stroke={color}
+          strokeWidth="3.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
     );
   }
@@ -120,6 +146,22 @@ export const CategoryScrollIcon: React.FC<CategoryScrollIconProps> = ({
         <line x1="36" y1="40" x2="64" y2="40" stroke={color} strokeWidth="3.5" strokeLinecap="round" />
         <line x1="36" y1="52" x2="64" y2="52" stroke={color} strokeWidth="3.5" strokeLinecap="round" />
         <line x1="36" y1="64" x2="52" y2="64" stroke={color} strokeWidth="3.5" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (type === 'assignment_solve') {
+    return (
+      <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="25" y="24" width="50" height="58" rx="8" stroke={color} strokeWidth="4" fill="none" />
+        <path d="M38 24V20C38 17.7909 39.7909 16 42 16H58C60.2091 16 62 17.7909 62 20V24" stroke={color} strokeWidth="3.5" />
+        {/* Solved checkmarks on clipboard */}
+        <path d="M33 39L36 42L41 37" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <line x1="45" y1="40" x2="64" y2="40" stroke={color} strokeWidth="3" strokeLinecap="round" />
+        <path d="M33 51L36 54L41 49" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <line x1="45" y1="52" x2="64" y2="52" stroke={color} strokeWidth="3" strokeLinecap="round" />
+        <path d="M33 63L36 66L41 61" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <line x1="45" y1="64" x2="56" y2="64" stroke={color} strokeWidth="3" strokeLinecap="round" />
       </svg>
     );
   }
