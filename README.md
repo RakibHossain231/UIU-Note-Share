@@ -48,39 +48,6 @@ UIU Note Share is a modern, high-performance web platform built for UIU students
 
 ---
 
-## 🚀 Getting Started
-
-### 1. Run Locally
-
-In your terminal (inside the project root `c:\UIU Note Share`):
-
-```bash
-# Start local development server
-npm run dev
-```
-
-Open your browser and navigate to:
-```
-http://localhost:3000
-```
-
-### 2. Build for Production
-
-```bash
-npm run build
-```
-
-This compiles TypeScript and produces an optimized production bundle in the `dist/` folder ready for deployment.
-
----
-
-## 🔐 Admin Dashboard Access
-
-- URL: `/admin` (or click the **Admin** button in the top navigation bar)
-- Default Master Key: `uiuadmin123`
-
----
-
 ## ☁️ Setting Up Cloud Storage (Cloudflare R2 & Google Drive)
 
 ### Option A: Cloudflare R2 (10GB Free + Unlimited Downloads)
@@ -93,23 +60,6 @@ This compiles TypeScript and produces an optimized production bundle in the `dis
 1. Upload your lecture PDFs to Google Drive.
 2. Set file sharing permission to: `Anyone with the link can view`.
 3. In the Admin Dashboard, select **Storage Type: Google Drive** and paste the link! UIU Note Share automatically formats the embed viewer.
-
----
-
-## 🚢 Free 1-Click Deployment to Vercel
-
-1. Push this project to your GitHub repository:
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit - UIU Note Share"
-   git remote add origin https://github.com/your-username/uiu-note-share.git
-   git push -u origin main
-   ```
-2. Log into [Vercel](https://vercel.com)
-3. Click **Add New > Project** and select your `uiu-note-share` repository.
-4. Framework Preset: `Vite`. Click **Deploy**!
-5. Your website will be live worldwide in less than 60 seconds with SSL and global CDN caching.
 
 ---
 
