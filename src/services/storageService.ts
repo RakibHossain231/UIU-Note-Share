@@ -5,7 +5,7 @@ import { INITIAL_DEPARTMENTS, DepartmentInfo } from '../data/departments';
 
 const STORAGE_KEYS = {
   COURSES: 'uiu_courses_v2',
-  RESOURCES: 'uiu_resources_v1',
+  RESOURCES: 'uiu_resources_v2',
   CONTRIBUTORS: 'uiu_contributors_v1',
   DEPARTMENTS: 'uiu_departments_v1',
   PINNED_COURSES: 'uiu_pinned_courses_v1',
@@ -191,5 +191,13 @@ export const StorageService = {
 
   setAdminLoggedIn(status: boolean): void {
     localStorage.setItem(STORAGE_KEYS.ADMIN_AUTH, status ? 'true' : 'false');
+  },
+
+  getAdminPassword(): string {
+    return localStorage.getItem('uiu_admin_password_custom') || 'uiuadmin123';
+  },
+
+  setAdminPassword(newPassword: string): void {
+    localStorage.setItem('uiu_admin_password_custom', newPassword);
   }
 };

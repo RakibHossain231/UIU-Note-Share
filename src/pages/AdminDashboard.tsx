@@ -30,8 +30,10 @@ export const AdminDashboard: React.FC = () => {
     isAdmin, 
     loginAdmin, 
     logoutAdmin, 
+    changeAdminPassword,
     courses, 
     addCourse, 
+    updateCourse,
     deleteCourse,
     resources, 
     addResource, 
@@ -61,6 +63,15 @@ export const AdminDashboard: React.FC = () => {
     description: '',
     credit: 3
   });
+
+  // Edit Course state
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordStatus, setPasswordStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 
   // Resource modal state
   const [resourceModalOpen, setResourceModalOpen] = useState(false);
@@ -167,6 +178,37 @@ export const AdminDashboard: React.FC = () => {
       description: '',
       credit: 3
     });
+  };
+
+  // Handle Update Course (Edit)
+  const handleUpdateCourseSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCourse || !editingCourse.title || !editingCourse.code) return;
+    updateCourse(editingCourse);
+    setEditingCourse(null);
+  };
+
+  // Handle Change Admin Password
+  const handleChangePassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || newPassword.length < 4) {
+      setPasswordStatus({ type: 'error', msg: 'Password must be at least 4 characters long.' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordStatus({ type: 'error', msg: 'New passwords do not match.' });
+      return;
+    }
+    const success = changeAdminPassword(currentPassword, newPassword);
+    if (!success) {
+      setPasswordStatus({ type: 'error', msg: 'Current password is incorrect.' });
+    } else {
+      setPasswordStatus({ type: 'success', msg: 'Admin password updated successfully! Please remember it.' });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => setPasswordStatus(null), 3500);
+    }
   };
 
   // Handle Create Resource
@@ -450,7 +492,14 @@ export const AdminDashboard: React.FC = () => {
                           </td>
                           <td className="px-4 py-3">Trimester {course.trimester}</td>
                           <td className="px-4 py-3 font-semibold">{notesCount} items</td>
-                          <td className="px-4 py-3 text-right">
+                          <td className="px-4 py-3 text-right space-x-1">
+                            <button
+                              onClick={() => setEditingCourse({ ...course })}
+                              className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
+                              title="Edit Course"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
                             <button
                               onClick={() => {
                                 if (window.confirm(`Delete ${course.code}?`)) {
@@ -678,6 +727,197 @@ export const AdminDashboard: React.FC = () => {
               Save Configuration
             </button>
           </form>
+
+          {/* Security & Admin Password Section */}
+          <div className="pt-6 border-t border-gray-200 dark:border-zinc-800 space-y-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 dark:bg-purple-950/60 dark:text-purple-400 flex items-center justify-center">
+                <Lock className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                  Change Admin Master Password
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Update your master password so only you can access this panel.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleChangePassword} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  Current Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Enter current password (default: uiuadmin123)"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    New Secret Password
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="Enter new password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    Confirm New Password
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="Confirm new password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              {passwordStatus && (
+                <div className={`p-3 rounded-xl text-xs font-semibold flex items-center space-x-2 ${
+                  passwordStatus.type === 'success'
+                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                    : 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
+                }`}>
+                  {passwordStatus.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                  <span>{passwordStatus.msg}</span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="px-5 py-2 rounded-xl bg-zinc-900 text-white dark:bg-zinc-800 hover:bg-black dark:hover:bg-zinc-700 font-bold text-xs transition-colors shadow"
+              >
+                Update Password
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT COURSE */}
+      {editingCourse && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#1E1E1E] border border-gray-200 dark:border-zinc-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-5">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+              Edit Course Information
+            </h3>
+            <p className="text-xs text-gray-500">
+              Update the course title, code, trimester, or description if you made any spelling mistake.
+            </p>
+
+            <form onSubmit={handleUpdateCourseSubmit} className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Course Code *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingCourse.code}
+                    onChange={(e) => setEditingCourse({ ...editingCourse, code: e.target.value.toUpperCase() })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Short Abbreviation</label>
+                  <input
+                    type="text"
+                    value={editingCourse.abbr || ''}
+                    onChange={(e) => setEditingCourse({ ...editingCourse, abbr: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Course Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={editingCourse.title}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, title: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Department</label>
+                  <select
+                    value={editingCourse.department}
+                    onChange={(e) => setEditingCourse({ ...editingCourse, department: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  >
+                    {departments.map((d) => (
+                      <option key={d.code} value={d.code}>{d.shortName}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Trimester</label>
+                  <select
+                    value={editingCourse.trimester}
+                    onChange={(e) => setEditingCourse({ ...editingCourse, trimester: Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((t) => (
+                      <option key={t} value={t}>Trimester {t}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Theme Color</label>
+                  <input
+                    type="color"
+                    value={editingCourse.color || '#FF6600'}
+                    onChange={(e) => setEditingCourse({ ...editingCourse, color: e.target.value })}
+                    className="w-full h-8 px-1 py-1 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Description</label>
+                <textarea
+                  rows={2}
+                  value={editingCourse.description || ''}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, description: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingCourse(null)}
+                  className="px-4 py-2 font-semibold text-gray-500 hover:text-gray-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-[#FF6600] text-white font-bold hover:bg-orange-600"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

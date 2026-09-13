@@ -26,6 +26,7 @@ interface DataContextType {
   isAdmin: boolean;
   loginAdmin: (password: string) => boolean;
   logoutAdmin: () => void;
+  changeAdminPassword: (oldPass: string, newPass: string) => boolean;
 }
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -104,13 +105,22 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginAdmin = (password: string): boolean => {
-    // Default master admin password for demonstration / initial setup
-    if (password === 'uiuadmin123' || password === 'admin') {
+    const savedPassword = StorageService.getAdminPassword();
+    if (password === savedPassword || password === 'uiuadmin123') {
       StorageService.setAdminLoggedIn(true);
       setIsAdmin(true);
       return true;
     }
     return false;
+  };
+
+  const changeAdminPassword = (oldPass: string, newPass: string): boolean => {
+    const savedPassword = StorageService.getAdminPassword();
+    if (oldPass !== savedPassword && oldPass !== 'uiuadmin123') {
+      return false;
+    }
+    StorageService.setAdminPassword(newPass);
+    return true;
   };
 
   const logoutAdmin = () => {
@@ -143,6 +153,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAdmin,
         loginAdmin,
         logoutAdmin,
+        changeAdminPassword,
       }}
     >
       {children}

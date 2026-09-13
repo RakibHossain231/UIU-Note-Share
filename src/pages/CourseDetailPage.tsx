@@ -4,44 +4,52 @@ import {
   ArrowLeft, 
   Bookmark, 
   Download, 
-  FileText, 
-  HelpCircle, 
-  Award, 
-  ClipboardList, 
-  BookMarked,
+  ChevronDown, 
+  ArrowUpDown,
   Sparkles,
-  Search,
-  Filter,
-  Layers
+  Award
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
-import { ResourceType, ResourceItem } from '../types';
-import { NoteCard } from '../components/NoteCard';
+import { ResourceItem } from '../types';
+import { CategoryScrollIcon } from '../components/CategoryScrollIcon';
 import { PdfModalViewer } from '../components/PdfModalViewer';
 import { BulkDownloadModal } from '../components/BulkDownloadModal';
 import { EmptyState } from '../components/EmptyState';
 import { RequestNoteModal } from '../components/RequestNoteModal';
 import { ZipDownloadService, DownloadProgress } from '../services/zipDownloadService';
+import { formatTrimesterCode } from '../utils/trimesterHelper';
 
-type TabKey = 'all' | 'handnote' | 'question_solve' | 'ct' | 'assignment' | 'cheatsheet';
+type CategoryKey = 
+  | 'mid_question'
+  | 'final_question'
+  | 'mid_solve'
+  | 'final_solve'
+  | 'handnote'
+  | 'ct'
+  | 'assignment'
+  | 'cheatsheet';
 
 export const CourseDetailPage: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
   const { courses, resources, pinnedCourseIds, togglePinCourse } = useData();
 
-  const [activeTab, setActiveTab] = useState<TabKey>('all');
-  const [questionSubTab, setQuestionSubTab] = useState<'all' | 'mid' | 'final'>('all');
+  // Selected Category (null = Level 1 Category Hub, string = Level 2 Trimester Grid)
+  const [selectedCategory, setSelectedCategory] = useState<CategoryKey | null>(null);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+
+  // Modals state
   const [previewItem, setPreviewItem] = useState<ResourceItem | null>(null);
   const [requestModalOpen, setRequestModalOpen] = useState(false);
-  
-  // Bulk ZIP download state
-  const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
 
   // Find course
-  const course = courses.find(c => c.id === courseId || c.code.toLowerCase().replace(/[\s-]/g, '') === (courseId || '').toLowerCase().replace(/[\s-]/g, ''));
+  const course = courses.find(
+    c => c.id === courseId || c.code.toLowerCase().replace(/[\s-]/g, '') === (courseId || '').toLowerCase().replace(/[\s-]/g, '')
+  );
 
   const isPinned = course ? pinnedCourseIds.includes(course.id) : false;
+  const cardColor = course?.color || '#FF6600';
 
   // Filter resources for this course
   const courseResources = useMemo(() => {
@@ -49,22 +57,95 @@ export const CourseDetailPage: React.FC = () => {
     return resources.filter(r => r.courseId === course.id);
   }, [course, resources]);
 
-  // Tab filtered resources
-  const tabFilteredResources = useMemo(() => {
-    return courseResources.filter(r => {
-      if (activeTab === 'all') return true;
-      if (activeTab === 'handnote') return r.type === 'handnote';
-      if (activeTab === 'question_solve') {
-        if (questionSubTab === 'mid') return r.type === 'question_mid';
-        if (questionSubTab === 'final') return r.type === 'question_final';
-        return r.type === 'question_mid' || r.type === 'question_final';
+  // Category counts
+  const categoryData = useMemo(() => {
+    const midQuestions = courseResources.filter(r => r.type === 'question_mid' && !r.hasSolution);
+    const finalQuestions = courseResources.filter(r => r.type === 'question_final' && !r.hasSolution);
+    const midSolves = courseResources.filter(r => r.type === 'question_mid' && r.hasSolution);
+    const finalSolves = courseResources.filter(r => r.type === 'question_final' && r.hasSolution);
+    
+    // Also include question items that serve as question papers
+    const allMidQuestions = courseResources.filter(r => r.type === 'question_mid');
+    const allFinalQuestions = courseResources.filter(r => r.type === 'question_final');
+
+    const handnotes = courseResources.filter(r => r.type === 'handnote');
+    const cts = courseResources.filter(r => r.type === 'ct');
+    const assignments = courseResources.filter(r => r.type === 'assignment');
+    const cheatsheets = courseResources.filter(r => r.type === 'cheatsheet');
+
+    return {
+      mid_question: {
+        title: 'Mid-Term Questions',
+        badge: 'MID',
+        count: allMidQuestions.length,
+        items: allMidQuestions,
+        iconType: 'question' as const
+      },
+      final_question: {
+        title: 'Final Questions',
+        badge: 'FINAL',
+        count: allFinalQuestions.length,
+        items: allFinalQuestions,
+        iconType: 'question' as const
+      },
+      mid_solve: {
+        title: 'Mid-Term Solutions',
+        badge: 'MID',
+        count: midSolves.length,
+        items: midSolves,
+        iconType: 'solution' as const
+      },
+      final_solve: {
+        title: 'Final Solutions',
+        badge: 'FINAL',
+        count: finalSolves.length,
+        items: finalSolves,
+        iconType: 'solution' as const
+      },
+      handnote: {
+        title: 'Handwritten Notes',
+        badge: 'NOTE',
+        count: handnotes.length,
+        items: handnotes,
+        iconType: 'handnote' as const
+      },
+      ct: {
+        title: 'Class Tests (CT)',
+        badge: 'CT',
+        count: cts.length,
+        items: cts,
+        iconType: 'ct' as const
+      },
+      assignment: {
+        title: 'Assignments & Solves',
+        badge: 'ASSIGN',
+        count: assignments.length,
+        items: assignments,
+        iconType: 'assignment' as const
+      },
+      cheatsheet: {
+        title: 'Formula & Cheat Sheets',
+        badge: 'CHEAT',
+        count: cheatsheets.length,
+        items: cheatsheets,
+        iconType: 'cheatsheet' as const
       }
-      if (activeTab === 'ct') return r.type === 'ct';
-      if (activeTab === 'assignment') return r.type === 'assignment';
-      if (activeTab === 'cheatsheet') return r.type === 'cheatsheet';
-      return true;
+    };
+  }, [courseResources]);
+
+  // Selected category items with sorting
+  const activeItems = useMemo(() => {
+    if (!selectedCategory) return [];
+    const rawItems = [...categoryData[selectedCategory].items];
+    return rawItems.sort((a, b) => {
+      const codeA = a.trimesterCode || '';
+      const codeB = b.trimesterCode || '';
+      if (sortOrder === 'newest') {
+        return codeB.localeCompare(codeA);
+      }
+      return codeA.localeCompare(codeB);
     });
-  }, [courseResources, activeTab, questionSubTab]);
+  }, [selectedCategory, categoryData, sortOrder]);
 
   if (!course) {
     return (
@@ -80,13 +161,14 @@ export const CourseDetailPage: React.FC = () => {
   }
 
   // Handle Bulk ZIP Download
-  const handleDownloadAllZip = async () => {
-    if (tabFilteredResources.length === 0) return;
+  const handleDownloadZip = async () => {
+    if (activeItems.length === 0) return;
     setBulkModalOpen(true);
     try {
+      const catTitle = selectedCategory ? categoryData[selectedCategory].title : 'resources';
       await ZipDownloadService.downloadResourcesAsZip(
-        `${course.code}_${activeTab}_resources`,
-        tabFilteredResources,
+        `${course.code}_${catTitle.replace(/\s+/g, '_')}`,
+        activeItems,
         (prog) => setDownloadProgress(prog)
       );
     } catch (err) {
@@ -94,7 +176,7 @@ export const CourseDetailPage: React.FC = () => {
       setDownloadProgress({
         currentFile: 'Error packaging files',
         loaded: 0,
-        total: tabFilteredResources.length,
+        total: activeItems.length,
         percentage: 0,
         status: 'error',
         errorMessage: 'Some files could not be downloaded due to CORS restrictions.'
@@ -102,184 +184,207 @@ export const CourseDetailPage: React.FC = () => {
     }
   };
 
-  const getCategoryCount = (type: TabKey) => {
-    if (type === 'all') return courseResources.length;
-    if (type === 'question_solve') {
-      return courseResources.filter(r => r.type === 'question_mid' || r.type === 'question_final').length;
-    }
-    return courseResources.filter(r => r.type === type).length;
-  };
-
-  const tabs: { key: TabKey; label: string; icon: any }[] = [
-    { key: 'all', label: 'All Resources', icon: Layers },
-    { key: 'handnote', label: 'Handnotes', icon: FileText },
-    { key: 'question_solve', label: 'Question Solves', icon: HelpCircle },
-    { key: 'ct', label: 'Class Tests (CT)', icon: Award },
-    { key: 'assignment', label: 'Assignments', icon: ClipboardList },
-    { key: 'cheatsheet', label: 'Cheat Sheets', icon: BookMarked },
-  ];
-
   return (
-    <div className="space-y-8 pb-16">
+    <div className="space-y-8 pb-24 relative min-h-[80vh]">
       
-      {/* Back button */}
-      <Link
-        to="/"
-        className="inline-flex items-center space-x-2 text-xs font-semibold text-gray-500 hover:text-[#FF6600] transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        <span>Back to Course Directory</span>
-      </Link>
+      {/* Back to All Courses Link */}
+      <div className="flex items-center justify-between">
+        <Link
+          to="/"
+          className="inline-flex items-center space-x-2 text-xs font-semibold text-gray-500 hover:text-[#FF6600] transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to All Courses</span>
+        </Link>
 
-      {/* Course Hero Banner */}
-      <div className="relative overflow-hidden bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <button
+          onClick={() => togglePinCourse(course.id)}
+          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+            isPinned
+              ? 'bg-orange-500 text-white shadow-sm'
+              : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700'
+          }`}
+        >
+          <Bookmark className={`w-3.5 h-3.5 ${isPinned ? 'fill-white' : ''}`} />
+          <span>{isPinned ? 'Saved' : 'Pin Course'}</span>
+        </button>
+      </div>
+
+      {/* Course Header Banner (Matches Screenshot 1 & 2) */}
+      <div 
+        style={{ borderBottom: `5px solid ${cardColor}` }}
+        className="bg-white dark:bg-[#1E1E1E] border-t border-l border-r border-gray-200/80 dark:border-zinc-800 rounded-2xl p-6 sm:p-8 shadow-sm"
+      >
+        <div 
+          style={{ color: cardColor }} 
+          className="text-xs sm:text-sm font-extrabold uppercase tracking-wider mb-1"
+        >
+          {course.code}
+        </div>
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white leading-tight">
+          {course.title}
+        </h1>
+        {course.description && (
+          <p className="mt-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+            {course.description}
+          </p>
+        )}
+      </div>
+
+      {/* ========================================================= */}
+      {/* LEVEL 1: CATEGORY HUB (Matches Screenshot 1)               */}
+      {/* ========================================================= */}
+      {!selectedCategory && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Select Category
+            </h2>
+            <span className="text-xs text-gray-400">
+              {courseResources.length} Total Resources
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            {(Object.keys(categoryData) as CategoryKey[]).map((key) => {
+              const cat = categoryData[key];
+              return (
+                <button
+                  key={key}
+                  onClick={() => setSelectedCategory(key)}
+                  className="group relative flex flex-col items-center justify-between text-center bg-[#FFF9F5] dark:bg-[#201A16] border border-orange-200/70 dark:border-zinc-800/80 rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-xl hover:border-[#FF6600]/60 transition-all duration-200 hover:-translate-y-1 cursor-pointer"
+                >
+                  {/* Top-Right Badge (e.g. MID, FINAL, NOTE) */}
+                  <span className="absolute top-3.5 right-3.5 px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-[#C2671A] text-white shadow-sm">
+                    {cat.badge}
+                  </span>
+
+                  {/* Center Themed Scroll/Document Illustration */}
+                  <div className="my-4 transform group-hover:scale-105 transition-transform">
+                    <CategoryScrollIcon
+                      type={cat.iconType}
+                      color="#C2671A"
+                      className="w-20 h-20 sm:w-24 sm:h-24"
+                    />
+                  </div>
+
+                  {/* Bottom Title & Total Count (User Request: "total count ta raikho") */}
+                  <div className="w-full pt-2 border-t border-orange-200/50 dark:border-zinc-800/80">
+                    <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white leading-snug">
+                      {cat.title}
+                    </h3>
+                    <p className="mt-1 text-xs font-semibold text-[#C2671A] dark:text-orange-400">
+                      {cat.count > 0 ? `${cat.count} ${cat.count === 1 ? 'Item' : 'Items'} Available` : '0 Available (Request)'}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* LEVEL 2: TRIMESTER GRID (Matches Screenshot 2)             */}
+      {/* ========================================================= */}
+      {selectedCategory && (
+        <div className="space-y-6">
           
-          <div className="space-y-3 max-w-2xl">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="px-3 py-1 rounded-xl text-sm font-black tracking-wider bg-orange-100 dark:bg-orange-950/60 text-[#FF6600]">
-                {course.code}
-              </span>
-              <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-300">
-                {course.department}
-              </span>
-              <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-300">
-                Trimester {course.trimester}
-              </span>
-              {course.credit && (
-                <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-300">
-                  {course.credit} Credits
+          {/* Breadcrumb / Subheader (Screenshot 2) */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-gray-200 dark:border-zinc-800">
+            
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setSelectedCategory(null)}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-200 hover:bg-[#FF6600] hover:text-white transition-colors shadow-sm"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Categories</span>
+              </button>
+
+              <div className="flex items-center space-x-2">
+                <span 
+                  style={{ backgroundColor: cardColor }} 
+                  className="w-2.5 h-2.5 rounded-full inline-block"
+                />
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+                  {categoryData[selectedCategory].title}
+                </h2>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/60 text-[#FF6600]">
+                  {activeItems.length}
                 </span>
-              )}
+              </div>
             </div>
 
-            <h1 className="text-2xl sm:text-4xl font-extrabold text-gray-900 dark:text-white leading-tight">
-              {course.title}
-            </h1>
+            {/* Sort Dropdown */}
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setSortOrder(prev => prev === 'newest' ? 'oldest' : 'newest')}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-700 dark:text-gray-300 hover:border-[#FF6600] transition-colors"
+              >
+                <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
+                <span>{sortOrder === 'newest' ? 'Newest First' : 'Oldest First'}</span>
+              </button>
+            </div>
 
-            {course.description && (
-              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                {course.description}
-              </p>
-            )}
           </div>
 
-          {/* Quick Actions (Pin & ZIP download) */}
-          <div className="flex sm:flex-col items-center sm:items-end gap-2 shrink-0">
-            <button
-              onClick={() => togglePinCourse(course.id)}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-                isPinned
-                  ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
-                  : 'bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-zinc-700'
-              }`}
-            >
-              <Bookmark className={`w-4 h-4 ${isPinned ? 'fill-white' : ''}`} />
-              <span>{isPinned ? 'Pinned to Saved' : 'Pin Course'}</span>
-            </button>
+          {/* Grid of Trimester Cards (Matches Screenshot 2) */}
+          {activeItems.length === 0 ? (
+            <EmptyState
+              categoryName={categoryData[selectedCategory].title}
+              onRequestClick={() => setRequestModalOpen(true)}
+            />
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+              {activeItems.map((item) => {
+                const codeBadge = item.trimesterCode || (item.ctNumber ? `CT ${item.ctNumber}` : 'PDF');
+                const readableSemester = formatTrimesterCode(item.trimesterCode);
 
-            {courseResources.length > 0 && (
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => setPreviewItem(item)}
+                    style={{ borderBottom: `4px solid ${cardColor}` }}
+                    className="group relative flex flex-col items-center justify-center text-center bg-white dark:bg-[#1E1E1E] border border-gray-200/80 dark:border-zinc-800 rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-1 cursor-pointer"
+                  >
+                    {/* Oval Trimester Pill (e.g. 261, 253, 252) */}
+                    <div className="px-5 py-1 rounded-full bg-[#FDF0E7] dark:bg-zinc-800 border border-[#F6D3BC] dark:border-zinc-700 text-[#C2671A] dark:text-orange-400 font-extrabold text-sm sm:text-base tracking-wide shadow-inner mb-3">
+                      {codeBadge}
+                    </div>
+
+                    {/* Semester Name (e.g. Spring 2026, Fall 2025) */}
+                    <h4 className="text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 group-hover:text-[#FF6600] transition-colors">
+                      {readableSemester !== 'General' ? readableSemester : item.title}
+                    </h4>
+
+                    {/* Contributor Credit (Miniature) */}
+                    {item.contributor && (
+                      <span className="mt-2 text-[10px] text-gray-400 dark:text-zinc-500 font-medium">
+                        By {item.contributor.name}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Floating "Download all in ZIP File" Button (Screenshot 2) */}
+          {activeItems.length > 0 && (
+            <div className="fixed bottom-6 right-6 z-30">
               <button
-                onClick={handleDownloadAllZip}
-                className="flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 hover:bg-[#FF6600] dark:hover:bg-[#FF6600] dark:hover:text-white transition-all shadow-sm"
-                title="Download all resources in a single ZIP file"
+                onClick={handleDownloadZip}
+                className="flex items-center space-x-2 px-5 py-3 rounded-2xl bg-[#FF6600] hover:bg-orange-600 text-white font-bold text-xs sm:text-sm shadow-xl shadow-orange-500/30 transition-all transform hover:scale-105"
               >
                 <Download className="w-4 h-4" />
-                <span>Download All in ZIP</span>
+                <span>Download all in ZIP File</span>
               </button>
-            )}
-          </div>
+            </div>
+          )}
 
         </div>
-      </div>
-
-      {/* Category Tabs */}
-      <div className="space-y-4">
-        <div className="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none border-b border-gray-200 dark:border-zinc-800">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const count = getCategoryCount(tab.key);
-            const isActive = activeTab === tab.key;
-
-            return (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center space-x-2 px-4 py-3 border-b-2 font-semibold text-xs sm:text-sm whitespace-nowrap transition-all ${
-                  isActive
-                    ? 'border-[#FF6600] text-[#FF6600]'
-                    : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span>{tab.label}</span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                  isActive ? 'bg-orange-100 dark:bg-orange-950/60 text-[#FF6600]' : 'bg-gray-100 dark:bg-zinc-800 text-gray-500'
-                }`}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Subfilter for Question Solves (Mid vs Final) */}
-        {activeTab === 'question_solve' && (
-          <div className="flex items-center space-x-2 pt-1">
-            <span className="text-xs font-medium text-gray-500">Filter Exam:</span>
-            <button
-              onClick={() => setQuestionSubTab('all')}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold ${
-                questionSubTab === 'all'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-400'
-              }`}
-            >
-              All Exams
-            </button>
-            <button
-              onClick={() => setQuestionSubTab('mid')}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold ${
-                questionSubTab === 'mid'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-400'
-              }`}
-            >
-              Mid Term Only
-            </button>
-            <button
-              onClick={() => setQuestionSubTab('final')}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold ${
-                questionSubTab === 'final'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-400'
-              }`}
-            >
-              Final Exam Only
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Resources List */}
-      <div>
-        {tabFilteredResources.length === 0 ? (
-          <EmptyState
-            categoryName={tabs.find(t => t.key === activeTab)?.label}
-            onRequestClick={() => setRequestModalOpen(true)}
-          />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {tabFilteredResources.map((item) => (
-              <NoteCard
-                key={item.id}
-                item={item}
-                onPreview={(selected) => setPreviewItem(selected)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      )}
 
       {/* PDF Modal Viewer */}
       <PdfModalViewer
