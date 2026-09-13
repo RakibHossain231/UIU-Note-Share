@@ -600,9 +600,9 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
             </form>
 
             <div className="pt-3 border-t border-gray-100 dark:border-zinc-800 text-center">
-              <span className="text-[11px] text-gray-400">
+              {/* <span className="text-[11px] text-gray-400">
                 Default: <code className="bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-orange-500">rakibhossain0308@gmail.com</code> • <code className="bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-orange-500">564566</code>
-              </span>
+              </span> */}
             </div>
           </div>
         </div>
@@ -1520,8 +1520,8 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
                   >
                     <option value={3}>3.0</option>
-                    <option value={1.5}>1.5 (Lab)</option>
-                    <option value={1}>1.0</option>
+                    <option value={1.5}>2.0</option>
+                    <option value={1}>1.0 (LAB)</option>
                   </select>
                 </div>
               </div>
@@ -1634,8 +1634,8 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
                   >
                     <option value={3}>3.0</option>
-                    <option value={1.5}>1.5 (Lab)</option>
-                    <option value={1}>1.0</option>
+                    <option value={1.5}>2.0</option>
+                    <option value={1}>1.0 (Lab)</option>
                   </select>
                 </div>
               </div>
