@@ -83,3 +83,13 @@ export interface SupabaseConfig {
   supabaseUrl: string;
   supabaseAnonKey: string;
 }
+
+export interface AdminCredentials {
+  email: string;
+  password: string;
+  securityPin: string; // 6-digit 2FA PIN
+  lastLogin?: string;
+  failedAttempts: number;
+  lockUntil?: number; // timestamp in ms if locked
+}
+

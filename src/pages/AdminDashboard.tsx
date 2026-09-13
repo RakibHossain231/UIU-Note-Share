@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   Lock, 
@@ -17,7 +17,16 @@ import {
   LogOut,
   Sparkles,
   Search,
-  ExternalLink
+  ExternalLink,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Shield,
+  Clock,
+  ArrowLeft,
+  Mail,
+  Key,
+  ShieldAlert
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { Course, ResourceItem, Contributor, ResourceType } from '../types';
@@ -28,7 +37,12 @@ type AdminTab = 'courses' | 'resources' | 'contributors' | 'requests' | 'setting
 export const AdminDashboard: React.FC = () => {
   const { 
     isAdmin, 
+    adminEmail,
     loginAdmin, 
+    loginStep1,
+    loginStep2,
+    updateAdminSecurity,
+    getLockStatus,
     logoutAdmin, 
     changeAdminPassword,
     courses, 
@@ -44,9 +58,49 @@ export const AdminDashboard: React.FC = () => {
     noteRequests 
   } = useData();
 
-  // Login form state
+  // 2-Step Login form state
+  const [loginStep, setLoginStep] = useState<1 | 2>(1);
+  const [emailInput, setEmailInput] = useState<string>('admin@uiu.ac.bd');
   const [passwordInput, setPasswordInput] = useState('');
-  const [loginError, setLoginError] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginFeedback, setLoginFeedback] = useState<{ type: 'error' | 'success' | 'warning'; msg: string } | null>(null);
+  const [lockSeconds, setLockSeconds] = useState<number>(0);
+
+  // Security Credentials management state in Settings tab
+  const [editAdminEmail, setEditAdminEmail] = useState<string>(adminEmail);
+  const [editCurrentPass, setEditCurrentPass] = useState('');
+  const [editNewPass, setEditNewPass] = useState('');
+  const [editConfirmPass, setEditConfirmPass] = useState('');
+  const [editNewPin, setEditNewPin] = useState('');
+  const [securityStatus, setSecurityStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+  // Check brute-force lock status on mount
+  useEffect(() => {
+    const lock = getLockStatus();
+    if (lock.locked) {
+      setLockSeconds(lock.remainingSeconds);
+    }
+  }, [getLockStatus]);
+
+  // Lockout countdown timer
+  useEffect(() => {
+    if (lockSeconds <= 0) return;
+    const timer = setInterval(() => {
+      setLockSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [lockSeconds]);
+
+  useEffect(() => {
+    setEditAdminEmail(adminEmail);
+  }, [adminEmail]);
 
   // Active admin tab
   const [activeTab, setActiveTab] = useState<AdminTab>('courses');
@@ -67,7 +121,7 @@ export const AdminDashboard: React.FC = () => {
   // Edit Course state
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
 
-  // Password change state
+  // Legacy password change state (for compatibility)
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -136,15 +190,76 @@ export const AdminDashboard: React.FC = () => {
   // Search in tables
   const [adminSearch, setAdminSearch] = useState('');
 
-  // Handle Login
-  const handleLogin = (e: React.FormEvent) => {
+  // Handle Step 1 Login (Email + Password)
+  const handleStep1Submit = (e: React.FormEvent) => {
     e.preventDefault();
-    const success = loginAdmin(passwordInput);
-    if (!success) {
-      setLoginError(true);
+    setLoginFeedback(null);
+    const res = loginStep1(emailInput, passwordInput);
+    if (res.isLocked) {
+      setLockSeconds(res.remainingSeconds || 900);
+      setLoginFeedback({
+        type: 'error',
+        msg: res.message || 'Account locked for 15 minutes due to consecutive failed attempts.'
+      });
+      return;
+    }
+    if (!res.success) {
+      setLoginFeedback({
+        type: 'error',
+        msg: res.message || 'Incorrect email or password.'
+      });
+      return;
+    }
+    setLoginStep(2);
+    setLoginFeedback({
+      type: 'success',
+      msg: 'Identity verified! Enter your 6-digit security code / PIN.'
+    });
+  };
+
+  // Handle Step 2 Login (6-Digit Security PIN / 2FA)
+  const handleStep2Submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginFeedback(null);
+    const res = loginStep2(pinInput);
+    if (!res.success) {
+      setLoginFeedback({
+        type: 'error',
+        msg: res.message || 'Invalid 6-digit verification code.'
+      });
+      return;
+    }
+    setLoginFeedback(null);
+    setPasswordInput('');
+    setPinInput('');
+    setLoginStep(1);
+  };
+
+  // Handle Update Complete Security Credentials (Email + Pass + 2FA PIN)
+  const handleUpdateSecuritySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSecurityStatus(null);
+
+    if (editNewPass && editNewPass !== editConfirmPass) {
+      setSecurityStatus({ type: 'error', msg: 'New password and confirmation do not match.' });
+      return;
+    }
+
+    if (editNewPin && editNewPin.trim().length !== 6) {
+      setSecurityStatus({ type: 'error', msg: '2FA Security PIN must be exactly 6 digits.' });
+      return;
+    }
+
+    const res = updateAdminSecurity(editAdminEmail, editCurrentPass, editNewPass, editNewPin);
+    if (!res.success) {
+      setSecurityStatus({ type: 'error', msg: res.message });
     } else {
-      setLoginError(false);
-      setPasswordInput('');
+      setSecurityStatus({ type: 'success', msg: res.message });
+      setEditCurrentPass('');
+      setEditNewPass('');
+      setEditConfirmPass('');
+      setEditNewPin('');
+      setTimeout(() => setSecurityStatus(null), 4000);
     }
   };
 
@@ -277,55 +392,201 @@ export const AdminDashboard: React.FC = () => {
     setTimeout(() => setSettingsSaved(false), 2500);
   };
 
-  // If not logged in, show Login Screen
+  // If not logged in, show 2-Step Verified Login Screen
   if (!isAdmin) {
+    // Case 1: Brute-Force Lockout Active
+    if (lockSeconds > 0) {
+      const minutes = Math.floor(lockSeconds / 60);
+      const seconds = lockSeconds % 60;
+      return (
+        <div className="min-h-[75vh] flex items-center justify-center px-4">
+          <div className="max-w-md w-full bg-white dark:bg-[#1A1A1A] border border-rose-200 dark:border-rose-900/60 rounded-3xl p-8 shadow-2xl text-center space-y-5">
+            <div className="w-16 h-16 rounded-3xl bg-rose-100 text-rose-600 dark:bg-rose-950/60 flex items-center justify-center mx-auto shadow-inner animate-pulse">
+              <ShieldAlert className="w-8 h-8" />
+            </div>
+            <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white">
+              Security Lockout Active
+            </h2>
+            <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+              Too many consecutive failed login attempts detected. To protect UIU Note Share from unauthorized password theft, admin access is temporarily locked.
+            </p>
+            <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40">
+              <div className="text-xs text-rose-600 dark:text-rose-400 font-semibold mb-1">Time Remaining Before Unlock</div>
+              <div className="text-3xl font-black font-mono text-rose-600 dark:text-rose-400">
+                {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+              </div>
+            </div>
+            <p className="text-[11px] text-gray-400">
+              Please wait for the timer to expire, or refresh after cooldown period ends.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // Case 2: Step 1 of 2 (Email + Password)
+    if (loginStep === 1) {
+      return (
+        <div className="min-h-[75vh] flex items-center justify-center px-4">
+          <div className="max-w-md w-full bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-3xl p-8 shadow-2xl space-y-6">
+            <div className="text-center">
+              <div className="w-14 h-14 rounded-2xl bg-orange-100 text-[#FF6600] dark:bg-orange-950/60 flex items-center justify-center mx-auto mb-4 shadow-inner">
+                <Lock className="w-7 h-7" />
+              </div>
+              <div className="inline-flex items-center space-x-1 px-3 py-0.5 rounded-full text-[10px] font-extrabold bg-orange-100 dark:bg-orange-950/50 text-[#FF6600] uppercase tracking-wider mb-2">
+                Step 1 of 2 • Identity Gate
+              </div>
+              <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white">
+                Admin Authentication
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Enter your registered Administrator Email and Master Password.
+              </p>
+            </div>
+
+            <form onSubmit={handleStep1Submit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                  Admin Email Address *
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="email"
+                    required
+                    placeholder="admin@uiu.ac.bd"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-50 dark:bg-zinc-800/90 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-[#FF6600]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                  Master Password *
+                </label>
+                <div className="relative">
+                  <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    placeholder="Enter password"
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                    className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-gray-50 dark:bg-zinc-800/90 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-[#FF6600]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {loginFeedback && (
+                <div className={`p-3 rounded-xl text-xs flex items-center space-x-2 ${
+                  loginFeedback.type === 'error'
+                    ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400'
+                    : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400'
+                }`}>
+                  {loginFeedback.type === 'error' ? <AlertCircle className="w-4 h-4 shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
+                  <span>{loginFeedback.msg}</span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="w-full py-3 rounded-xl bg-[#FF6600] hover:bg-orange-600 text-white font-bold text-sm transition-all shadow-md shadow-orange-500/25 flex items-center justify-center space-x-2"
+              >
+                <span>Continue to 2FA Verification</span>
+                <span>→</span>
+              </button>
+            </form>
+
+            <div className="pt-3 border-t border-gray-100 dark:border-zinc-800 text-center">
+              <span className="text-[11px] text-gray-400">
+                Default: <code className="bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-orange-500">admin@uiu.ac.bd</code> • <code className="bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-orange-500">uiuadmin123</code>
+              </span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Case 3: Step 2 of 2 (6-Digit Security PIN / 2FA)
     return (
-      <div className="min-h-[70vh] flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-3xl p-8 shadow-2xl">
-          <div className="w-14 h-14 rounded-2xl bg-orange-100 text-[#FF6600] dark:bg-orange-950/60 flex items-center justify-center mx-auto mb-5 shadow-inner">
-            <Lock className="w-7 h-7" />
+      <div className="min-h-[75vh] flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-3xl p-8 shadow-2xl space-y-6">
+          <div className="text-center">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 flex items-center justify-center mx-auto mb-4 shadow-inner">
+              <KeyRound className="w-7 h-7" />
+            </div>
+            <div className="inline-flex items-center space-x-1 px-3 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 uppercase tracking-wider mb-2">
+              Step 2 of 2 • 2FA Verification
+            </div>
+            <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white">
+              Two-Factor Authentication
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Enter your registered 6-digit Security PIN to verify identity for <strong className="text-gray-800 dark:text-gray-200">{emailInput}</strong>.
+            </p>
           </div>
 
-          <h2 className="text-2xl font-extrabold text-center text-gray-900 dark:text-white">
-            Admin Access
-          </h2>
-          <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-1 mb-6">
-            Enter the master password to manage courses, notes, and contributors.
-          </p>
-
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleStep2Submit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                Admin Master Key
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5 text-center">
+                6-Digit Security PIN *
               </label>
               <input
                 type="password"
+                maxLength={6}
+                autoFocus
                 required
-                placeholder="Enter password (default: uiuadmin123)"
-                value={passwordInput}
-                onChange={(e) => setPasswordInput(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-zinc-800/90 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-[#FF6600]"
+                placeholder="• • • • • •"
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
+                className="w-full text-center tracking-[0.6em] font-mono text-2xl py-3 rounded-xl bg-gray-50 dark:bg-zinc-800/90 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500"
               />
             </div>
 
-            {loginError && (
-              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs flex items-center space-x-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>Incorrect password. Use: <strong>uiuadmin123</strong></span>
+            {loginFeedback && (
+              <div className={`p-3 rounded-xl text-xs flex items-center space-x-2 ${
+                loginFeedback.type === 'error'
+                  ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400'
+                  : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400'
+              }`}>
+                {loginFeedback.type === 'error' ? <AlertCircle className="w-4 h-4 shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
+                <span>{loginFeedback.msg}</span>
               </div>
             )}
 
             <button
               type="submit"
-              className="w-full py-3 rounded-xl bg-[#FF6600] hover:bg-orange-600 text-white font-bold text-sm transition-all shadow-md shadow-orange-500/25"
+              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-all shadow-md shadow-emerald-500/25 flex items-center justify-center space-x-2"
             >
-              Sign In to Dashboard
+              <ShieldCheck className="w-4 h-4" />
+              <span>Unlock Admin Dashboard</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setLoginStep(1);
+                setLoginFeedback(null);
+              }}
+              className="w-full py-2 text-xs font-semibold text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 flex items-center justify-center space-x-1"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back to Step 1 (Change Email/Password)</span>
             </button>
           </form>
 
-          <div className="mt-6 pt-4 border-t border-gray-100 dark:border-zinc-800 text-center">
+          <div className="pt-3 border-t border-gray-100 dark:border-zinc-800 text-center">
             <span className="text-[11px] text-gray-400">
-              Default demo key: <code className="bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-orange-500">uiuadmin123</code>
+              Default 2FA PIN: <code className="bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-emerald-500">786221</code> (Customizable inside Settings)
             </span>
           </div>
         </div>
@@ -343,15 +604,18 @@ export const AdminDashboard: React.FC = () => {
             <ShieldCheck className="w-6 h-6" />
           </div>
           <div>
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl font-extrabold text-gray-900 dark:text-white">
                 Admin Control Center
               </h1>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
-                Live
+                2FA Verified
+              </span>
+              <span className="text-[11px] font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded-lg border border-gray-200 dark:border-zinc-700">
+                {adminEmail}
               </span>
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
               Manage courses, upload Cloudflare R2 / Drive notes, and attribute contributors.
             </p>
           </div>
@@ -739,37 +1003,59 @@ export const AdminDashboard: React.FC = () => {
                   Change Admin Master Password
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Update your master password so only you can access this panel.
+                  Manage your verified email, master password, and 6-digit Two-Factor Security PIN (2FA).
                 </p>
               </div>
             </div>
 
-            <form onSubmit={handleChangePassword} className="space-y-3">
+            <form onSubmit={handleUpdateSecuritySubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                  Current Password
+                  Registered Administrator Email *
                 </label>
-                <input
-                  type="password"
-                  required
-                  placeholder="Enter current password (default: uiuadmin123)"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
-                />
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="email"
+                    required
+                    placeholder="e.g. yourname@uiu.ac.bd"
+                    value={editAdminEmail}
+                    onChange={(e) => setEditAdminEmail(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <p className="text-[10px] text-gray-400 mt-1">
+                  This email is strictly required along with your password on Step 1 of login.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  Current Master Password (Required for Authorization) *
+                </label>
+                <div className="relative">
+                  <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="password"
+                    required
+                    placeholder="Enter current password to authorize changes"
+                    value={editCurrentPass}
+                    onChange={(e) => setEditCurrentPass(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    New Secret Password
+                    New Master Password (Optional)
                   </label>
                   <input
                     type="password"
-                    required
-                    placeholder="Enter new password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Leave blank to keep current"
+                    value={editNewPass}
+                    onChange={(e) => setEditNewPass(e.target.value)}
                     className="w-full px-3.5 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
                   />
                 </div>
@@ -779,32 +1065,58 @@ export const AdminDashboard: React.FC = () => {
                   </label>
                   <input
                     type="password"
-                    required
                     placeholder="Confirm new password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    value={editConfirmPass}
+                    onChange={(e) => setEditConfirmPass(e.target.value)}
                     className="w-full px-3.5 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
                   />
                 </div>
               </div>
 
-              {passwordStatus && (
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  New 6-Digit 2FA Security PIN (Optional)
+                </label>
+                <div className="relative">
+                  <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="password"
+                    maxLength={6}
+                    placeholder="6 digits (e.g. 786221) - leave blank to keep current"
+                    value={editNewPin}
+                    onChange={(e) => setEditNewPin(e.target.value.replace(/\D/g, ''))}
+                    className="w-full pl-10 pr-4 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white font-mono tracking-widest"
+                  />
+                </div>
+                <p className="text-[10px] text-gray-400 mt-1">
+                  This 6-digit PIN is required on Step 2 of login. Even if someone steals your password, they cannot enter without this PIN.
+                </p>
+              </div>
+
+              {securityStatus && (
                 <div className={`p-3 rounded-xl text-xs font-semibold flex items-center space-x-2 ${
-                  passwordStatus.type === 'success'
+                  securityStatus.type === 'success'
                     ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
                     : 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
                 }`}>
-                  {passwordStatus.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                  <span>{passwordStatus.msg}</span>
+                  {securityStatus.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+                  <span>{securityStatus.msg}</span>
                 </div>
               )}
 
-              <button
-                type="submit"
-                className="px-5 py-2 rounded-xl bg-zinc-900 text-white dark:bg-zinc-800 hover:bg-black dark:hover:bg-zinc-700 font-bold text-xs transition-colors shadow"
-              >
-                Update Password
-              </button>
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-[#FF6600] text-white hover:bg-orange-600 font-bold text-xs transition-colors shadow"
+                >
+                  Save Security Credentials
+                </button>
+
+                <div className="text-[11px] text-gray-400 flex items-center space-x-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Brute-force protection: 5 attempts max</span>
+                </div>
+              </div>
             </form>
           </div>
         </div>

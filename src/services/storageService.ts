@@ -1,4 +1,4 @@
-import { Course, ResourceItem, Contributor, NoteRequest, Department } from '../types';
+import { Course, ResourceItem, Contributor, NoteRequest, Department, AdminCredentials } from '../types';
 import { INITIAL_COURSES } from '../data/courses';
 import { INITIAL_RESOURCES, INITIAL_CONTRIBUTORS } from '../data/seedResources';
 import { INITIAL_DEPARTMENTS, DepartmentInfo } from '../data/departments';
@@ -13,6 +13,7 @@ const STORAGE_KEYS = {
   R2_CONFIG: 'uiu_r2_config_v1',
   SUPABASE_CONFIG: 'uiu_supabase_config_v1',
   ADMIN_AUTH: 'uiu_admin_auth_v1',
+  ADMIN_CREDENTIALS: 'uiu_admin_credentials_v2'
 };
 
 export const StorageService = {
@@ -184,7 +185,7 @@ export const StorageService = {
     localStorage.setItem(STORAGE_KEYS.NOTE_REQUESTS, JSON.stringify(list));
   },
 
-  // Admin Auth State
+  // Admin Auth State & Security
   isAdminLoggedIn(): boolean {
     return localStorage.getItem(STORAGE_KEYS.ADMIN_AUTH) === 'true';
   },
@@ -193,11 +194,83 @@ export const StorageService = {
     localStorage.setItem(STORAGE_KEYS.ADMIN_AUTH, status ? 'true' : 'false');
   },
 
+  getAdminCredentials(): AdminCredentials {
+    const raw = localStorage.getItem(STORAGE_KEYS.ADMIN_CREDENTIALS);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        return {
+          email: parsed.email || 'admin@uiu.ac.bd',
+          password: parsed.password || localStorage.getItem('uiu_admin_password_custom') || 'uiuadmin123',
+          securityPin: parsed.securityPin || '786221',
+          lastLogin: parsed.lastLogin,
+          failedAttempts: Number(parsed.failedAttempts || 0),
+          lockUntil: parsed.lockUntil ? Number(parsed.lockUntil) : undefined
+        };
+      } catch {
+        // Fallback below
+      }
+    }
+    const legacyPass = localStorage.getItem('uiu_admin_password_custom') || 'uiuadmin123';
+    const initialCreds: AdminCredentials = {
+      email: 'admin@uiu.ac.bd',
+      password: legacyPass,
+      securityPin: '786221',
+      failedAttempts: 0
+    };
+    this.saveAdminCredentials(initialCreds);
+    return initialCreds;
+  },
+
+  saveAdminCredentials(creds: AdminCredentials): void {
+    localStorage.setItem(STORAGE_KEYS.ADMIN_CREDENTIALS, JSON.stringify(creds));
+    localStorage.setItem('uiu_admin_password_custom', creds.password);
+  },
+
+  isBruteForceLocked(): { locked: boolean; remainingSeconds: number } {
+    const creds = this.getAdminCredentials();
+    if (creds.lockUntil && Date.now() < creds.lockUntil) {
+      const remaining = Math.ceil((creds.lockUntil - Date.now()) / 1000);
+      return { locked: true, remainingSeconds: remaining };
+    }
+    if (creds.lockUntil && Date.now() >= creds.lockUntil) {
+      // Lock expired, reset failed attempts
+      creds.failedAttempts = 0;
+      creds.lockUntil = undefined;
+      this.saveAdminCredentials(creds);
+    }
+    return { locked: false, remainingSeconds: 0 };
+  },
+
+  recordFailedAttempt(): { failedAttempts: number; isLocked: boolean; lockSeconds: number } {
+    const creds = this.getAdminCredentials();
+    creds.failedAttempts = (creds.failedAttempts || 0) + 1;
+    if (creds.failedAttempts >= 5) {
+      // Lock out for 15 minutes (900 seconds)
+      const lockDurationMs = 15 * 60 * 1000;
+      creds.lockUntil = Date.now() + lockDurationMs;
+      this.saveAdminCredentials(creds);
+      return { failedAttempts: creds.failedAttempts, isLocked: true, lockSeconds: 900 };
+    }
+    this.saveAdminCredentials(creds);
+    return { failedAttempts: creds.failedAttempts, isLocked: false, lockSeconds: 0 };
+  },
+
+  resetFailedAttempts(): void {
+    const creds = this.getAdminCredentials();
+    creds.failedAttempts = 0;
+    creds.lockUntil = undefined;
+    creds.lastLogin = new Date().toISOString();
+    this.saveAdminCredentials(creds);
+  },
+
   getAdminPassword(): string {
-    return localStorage.getItem('uiu_admin_password_custom') || 'uiuadmin123';
+    return this.getAdminCredentials().password;
   },
 
   setAdminPassword(newPassword: string): void {
-    localStorage.setItem('uiu_admin_password_custom', newPassword);
+    const creds = this.getAdminCredentials();
+    creds.password = newPassword;
+    this.saveAdminCredentials(creds);
   }
 };

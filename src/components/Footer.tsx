@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Heart, Mail, ShieldAlert, Sparkles } from 'lucide-react';
+import { BookOpen, Heart, Mail, ShieldAlert, Sparkles, Lock } from 'lucide-react';
 import { FacebookIcon, LinkedinIcon, GithubIcon } from './SocialIcons';
 
 export const Footer: React.FC = () => {
@@ -53,11 +53,6 @@ export const Footer: React.FC = () => {
               <li>
                 <Link to="/about" className="hover:text-[#FF6600] dark:hover:text-orange-400 transition-colors">
                   About the Creator & Vision
-                </Link>
-              </li>
-              <li>
-                <Link to="/admin" className="hover:text-[#FF6600] dark:hover:text-orange-400 transition-colors">
-                  Admin Dashboard
                 </Link>
               </li>
             </ul>
@@ -114,10 +109,20 @@ export const Footer: React.FC = () => {
         {/* Bottom Bar */}
         <div className="mt-12 pt-6 border-t border-gray-100 dark:border-zinc-800/80 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 dark:text-gray-500">
           <p>© {new Date().getFullYear()} UIU Note Share. Built with passion for UIU peers & juniors.</p>
-          <div className="flex items-center space-x-1 mt-2 sm:mt-0">
-            <span>Made with</span>
-            <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
-            <span>by Department of CSE, UIU</span>
+          <div className="flex items-center space-x-3 mt-2 sm:mt-0">
+            <div className="flex items-center space-x-1">
+              <span>Made with</span>
+              <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
+              <span>by Department of CSE, UIU</span>
+            </div>
+            <Link 
+              to="/admin" 
+              className="text-gray-300 dark:text-zinc-700 hover:text-gray-500 dark:hover:text-zinc-500 transition-colors p-1"
+              title="Admin Portal (Shortcut: Ctrl + Shift + A)"
+              aria-label="Admin Portal"
+            >
+              <Lock className="w-3 h-3" />
+            </Link>
           </div>
         </div>
       </div>

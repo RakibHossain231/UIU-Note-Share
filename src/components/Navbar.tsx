@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   BookOpen, 
@@ -10,9 +10,9 @@ import {
   ShieldCheck, 
   Bookmark, 
   Menu, 
-  X,
-  Sparkles,
-  Layers
+  X, 
+  Sparkles, 
+  Layers 
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useData } from '../context/DataContext';
@@ -23,6 +23,21 @@ export const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Secret keyboard shortcut (Ctrl + Shift + A or Alt + A) for Admin to open portal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) ||
+        (e.altKey && (e.key === 'A' || e.key === 'a'))
+      ) {
+        e.preventDefault();
+        navigate('/admin');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [navigate]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,18 +143,17 @@ export const Navbar: React.FC = () => {
               {isDark ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-gray-600" />}
             </button>
 
-            {/* Admin Dashboard / Login */}
-            <Link
-              to="/admin"
-              className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all ${
-                isAdmin 
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20 hover:bg-emerald-700'
-                  : 'bg-zinc-900 text-white dark:bg-zinc-800 dark:text-gray-100 hover:bg-[#FF6600] dark:hover:bg-[#FF6600]'
-              }`}
-            >
-              <ShieldCheck className="w-4 h-4" />
-              <span>{isAdmin ? 'Admin Panel' : 'Admin'}</span>
-            </Link>
+            {/* Admin Dashboard (Only visible when Admin is authenticated) */}
+            {isAdmin && (
+              <Link
+                to="/admin"
+                className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold bg-emerald-600 text-white shadow-md shadow-emerald-600/20 hover:bg-emerald-700 transition-all"
+                title="Admin Control Center"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>Admin Panel</span>
+              </Link>
+            )}
           </div>
 
           {/* Mobile hamburger */}
@@ -193,14 +207,16 @@ export const Navbar: React.FC = () => {
               </Link>
             );
           })}
-          <Link
-            to="/admin"
-            onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-base font-semibold text-white bg-[#FF6600]"
-          >
-            <ShieldCheck className="w-5 h-5" />
-            <span>{isAdmin ? 'Admin Dashboard' : 'Admin Login'}</span>
-          </Link>
+          {isAdmin && (
+            <Link
+              to="/admin"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-base font-semibold text-white bg-emerald-600"
+            >
+              <ShieldCheck className="w-5 h-5" />
+              <span>Admin Dashboard</span>
+            </Link>
+          )}
         </div>
       )}
     </header>
