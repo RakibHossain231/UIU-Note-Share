@@ -34,7 +34,6 @@ UIU Note Share is a modern, high-performance web platform built for UIU students
    - Students can download all handnotes or exam solves for a course in a single click with real-time percentage progress.
 
 6. **Full-Featured Admin Dashboard (`/admin`)**:
-   - Password-protected access (Default demo master key: `uiuadmin123`).
    - **Course Wizard**: Create new courses; the system automatically scaffolds all 5 categories.
    - **Resource Publisher**: Upload or link notes via Cloudflare R2 or Google Drive, and assign contributor credit.
    - **Contributor Management**: Add student contributors with their social profile links.
