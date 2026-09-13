@@ -1,4 +1,4 @@
-﻿import { Course, ResourceItem, Contributor, NoteRequest, Department, AdminCredentials } from '../types';
+import { Course, ResourceItem, Contributor, NoteRequest, Department, AdminCredentials } from '../types';
 import { INITIAL_COURSES } from '../data/courses';
 import { INITIAL_RESOURCES, INITIAL_CONTRIBUTORS } from '../data/seedResources';
 import { INITIAL_DEPARTMENTS, DepartmentInfo } from '../data/departments';
@@ -121,6 +121,11 @@ export const StorageService = {
     if (resource.contributor?.id) {
       this.incrementContributorCount(resource.contributor.id);
     }
+  },
+
+  updateResource(updated: ResourceItem): void {
+    const resources = this.getResources().map(r => r.id === updated.id ? updated : r);
+    this.saveResources(resources);
   },
 
   deleteResource(id: string): void {

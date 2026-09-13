@@ -1,4 +1,4 @@
-﻿import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Course, ResourceItem, Contributor, NoteRequest, Department, AdminCredentials } from '../types';
 import { StorageService, CreatorProfileData } from '../services/storageService';
 import { SupabaseService } from '../services/supabaseService';
@@ -23,6 +23,7 @@ interface DataContextType {
   updateCourse: (course: Course) => Promise<void>;
   deleteCourse: (id: string) => Promise<void>;
   addResource: (resource: ResourceItem) => Promise<void>;
+  updateResource: (resource: ResourceItem) => Promise<void>;
   deleteResource: (id: string) => Promise<void>;
   addContributor: (contributor: Contributor) => Promise<void>;
   updateContributor: (contributor: Contributor) => Promise<void>;
@@ -169,6 +170,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     StorageService.addResource(res);
     setResources(StorageService.getResources());
     setContributors(StorageService.getContributors());
+    await SupabaseService.insertResource(res);
+  };
+
+  const handleUpdateResource = async (res: ResourceItem) => {
+    StorageService.updateResource(res);
+    setResources(StorageService.getResources());
     await SupabaseService.insertResource(res);
   };
 
@@ -367,6 +374,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateCourse: handleUpdateCourse,
         deleteCourse: handleDeleteCourse,
         addResource: handleAddResource,
+        updateResource: handleUpdateResource,
         deleteResource: handleDeleteResource,
         addContributor: handleAddContributor,
         updateContributor: handleUpdateContributor,

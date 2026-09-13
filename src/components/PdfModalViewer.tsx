@@ -77,6 +77,21 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ item, onClose })
     return `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
   };
 
+  const getDirectDownloadUrl = (url: string) => {
+    if (!url) return '';
+    if (url.includes('drive.google.com')) {
+      const matchD = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (matchD && matchD[1]) {
+        return `https://drive.google.com/uc?export=download&id=${matchD[1]}`;
+      }
+      const matchId = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (matchId && matchId[1]) {
+        return `https://drive.google.com/uc?export=download&id=${matchId[1]}`;
+      }
+    }
+    return url;
+  };
+
   const embedUrl = getEmbedUrl(item.fileUrl);
 
   const toggleFullscreen = () => {
@@ -184,13 +199,12 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ item, onClose })
               {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             </button>
 
-            {/* External / Download */}
+            {/* Direct Download Button */}
             <a
-              href={item.fileUrl}
-              target="_blank"
-              rel="noreferrer"
+              href={getDirectDownloadUrl(item.fileUrl)}
+              download={`${item.title}.pdf`}
               className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[#FF6600] text-white hover:bg-orange-600 transition-colors shadow-sm"
-              title="Download or Open in New Tab"
+              title="Direct Download PDF"
             >
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Download</span>
@@ -242,17 +256,27 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ item, onClose })
             />
           </div>
 
-          {/* Fallback Banner for Google Drive / Viewer */}
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-md px-4 py-2 rounded-full text-xs text-gray-300 flex items-center space-x-2 border border-white/10 shadow-lg pointer-events-auto z-10">
-            <span>If PDF takes time to preview:</span>
-            <a 
-              href={item.fileUrl} 
-              target="_blank" 
-              rel="noreferrer"
+          {/* Quick Reader Help Bar (Zero External Redirects) */}
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/85 backdrop-blur-md px-4 py-1.5 rounded-full text-xs text-gray-300 flex items-center space-x-2 border border-white/10 shadow-lg pointer-events-auto z-10">
+            <span>Taking time to load?</span>
+            <button 
+              onClick={() => {
+                setIsLoading(true);
+                setIframeKey(prev => prev + 1);
+              }}
               className="text-[#FF6600] font-bold underline flex items-center space-x-1 hover:text-orange-400"
             >
-              <span>Open Directly</span>
-              <ExternalLink className="w-3 h-3" />
+              <span>Reload Reader</span>
+              <RefreshCw className="w-3 h-3" />
+            </button>
+            <span>•</span>
+            <a 
+              href={getDirectDownloadUrl(item.fileUrl)} 
+              download={`${item.title}.pdf`}
+              className="text-emerald-400 font-bold underline flex items-center space-x-1 hover:text-emerald-300"
+            >
+              <span>Download File</span>
+              <Download className="w-3 h-3" />
             </a>
           </div>
         </div>

@@ -56,6 +56,7 @@ export const AdminDashboard: React.FC = () => {
     deleteCourse, 
     resources, 
     addResource, 
+    updateResource,
     deleteResource, 
     contributors, 
     addContributor, 
@@ -110,6 +111,9 @@ export const AdminDashboard: React.FC = () => {
 
   // Edit Course state
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+
+  // Edit Resource state
+  const [editingResource, setEditingResource] = useState<ResourceItem | null>(null);
 
   // Resource modal state
   const [resourceModalOpen, setResourceModalOpen] = useState(false);
@@ -950,6 +954,13 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
                           </td>
                           <td className="px-4 py-3 text-gray-500">{item.contributor?.name || 'Anonymous'}</td>
                           <td className="px-4 py-3 text-right space-x-2">
+                            <button
+                              onClick={() => setEditingResource(item)}
+                              className="text-gray-400 hover:text-blue-500 transition-colors"
+                              title="Edit Note / Resource"
+                            >
+                              <Edit3 className="w-4 h-4 inline" />
+                            </button>
                             <a
                               href={item.fileUrl}
                               target="_blank"
@@ -2126,6 +2137,178 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
                   className="px-4 py-1.5 rounded-xl bg-blue-600 text-white font-bold"
                 >
                   Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT RESOURCE */}
+      {editingResource && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-[#1E1E1E] border border-gray-200 dark:border-zinc-800 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl my-8 space-y-5 text-xs">
+            <div className="flex items-center space-x-2">
+              <Edit3 className="w-5 h-5 text-[#FF6600]" />
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                Edit Note / Exam Solve
+              </h3>
+            </div>
+            <p className="text-gray-500">
+              Update the resource title, category, Google Drive URL, trimester, or contributor attribution.
+            </p>
+
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (!editingResource.title || !editingResource.fileUrl) return;
+              updateResource(editingResource);
+              setEditingResource(null);
+            }} className="space-y-4">
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Target Course *</label>
+                  <select
+                    value={editingResource.courseId}
+                    onChange={(e) => {
+                      const course = courses.find(c => c.id === e.target.value);
+                      setEditingResource({ 
+                        ...editingResource, 
+                        courseId: e.target.value,
+                        department: course?.department || editingResource.department
+                      });
+                    }}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  >
+                    {courses.map((c) => (
+                      <option key={c.id} value={c.id}>{c.code} - {c.title}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Resource Category *</label>
+                  <select
+                    value={editingResource.type}
+                    onChange={(e) => setEditingResource({ ...editingResource, type: e.target.value as ResourceType })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  >
+                    <option value="handnote">📝 Handwritten Note</option>
+                    <option value="question_mid">❓ Mid Term Question</option>
+                    <option value="mid_solve">💡 Mid Term Solution</option>
+                    <option value="question_final">❓ Final Exam Question</option>
+                    <option value="final_solve">💡 Final Exam Solution</option>
+                    <option value="ct_question">🎯 Class Test (CT) Question</option>
+                    <option value="ct_solve">🎯 Class Test (CT) Solution</option>
+                    <option value="assignment_question">📋 Assignment Question</option>
+                    <option value="assignment_solve">📋 Assignment Solution</option>
+                    <option value="cheatsheet">📌 Cheat Sheet / Formula</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Resource Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={editingResource.title}
+                  onChange={(e) => setEditingResource({ ...editingResource, title: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Trimester Tag</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 231, 241"
+                    value={editingResource.trimesterCode || ''}
+                    onChange={(e) => setEditingResource({ ...editingResource, trimesterCode: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Storage Provider</label>
+                  <select
+                    value={editingResource.storageType}
+                    onChange={(e) => setEditingResource({ ...editingResource, storageType: e.target.value as any })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  >
+                    <option value="drive">Google Drive</option>
+                    <option value="r2">Cloudflare R2</option>
+                    <option value="direct_url">Direct URL</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">File Size</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 3.5 MB"
+                    value={editingResource.fileSize || ''}
+                    onChange={(e) => setEditingResource({ ...editingResource, fileSize: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">
+                  File URL (Google Drive Share Link or Direct URL) *
+                </label>
+                <input
+                  type="url"
+                  required
+                  value={editingResource.fileUrl}
+                  onChange={(e) => setEditingResource({ ...editingResource, fileUrl: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Contributor Attribution</label>
+                <select
+                  value={editingResource.contributor?.id || ''}
+                  onChange={(e) => {
+                    const contrib = contributors.find(c => c.id === e.target.value);
+                    setEditingResource({ ...editingResource, contributor: contrib });
+                  }}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                >
+                  <option value="">None / Anonymous</option>
+                  {contributors.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name} ({c.department} - {c.batch})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center space-x-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="editHasSolution"
+                  checked={Boolean(editingResource.hasSolution)}
+                  onChange={(e) => setEditingResource({ ...editingResource, hasSolution: e.target.checked })}
+                  className="rounded text-[#FF6600] focus:ring-[#FF6600]"
+                />
+                <label htmlFor="editHasSolution" className="font-semibold text-gray-700 dark:text-gray-300">
+                  Includes Question Paper Solution / Answer Script
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-gray-100 dark:border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingResource(null)}
+                  className="px-4 py-2 font-semibold text-gray-500 hover:text-gray-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-[#FF6600] text-white font-bold hover:bg-orange-600 transition-colors shadow"
+                >
+                  Save Resource Changes
                 </button>
               </div>
             </form>
