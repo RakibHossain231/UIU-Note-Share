@@ -16,11 +16,11 @@ export const INITIAL_COURSES: Course[] = [
   {
     id: 'math-1151',
     code: 'MATH 1151',
-    title: 'Differential and Integral Calculus',
-    abbr: 'Math 1',
+    title: 'Fundamental Calculus',
+    abbr: 'Calculus',
     department: 'CSE',
     trimester: 1,
-    color: '#0EA5E9',
+    color: '#84CC16',
     description: 'Functions, limits, differentiation, integration and real-world applications.',
     credit: 3
   },
@@ -79,7 +79,7 @@ export const INITIAL_COURSES: Course[] = [
     abbr: 'Discrete',
     department: 'CSE',
     trimester: 3,
-    color: '#8B5CF6',
+    color: '#C2671A',
     description: 'Propositional logic, set theory, graph theory, relations, combinatorics, and induction.',
     credit: 3
   },
