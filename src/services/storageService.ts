@@ -1,22 +1,65 @@
-import { Course, ResourceItem, Contributor, NoteRequest, Department, AdminCredentials } from '../types';
+﻿import { Course, ResourceItem, Contributor, NoteRequest, Department, AdminCredentials } from '../types';
 import { INITIAL_COURSES } from '../data/courses';
 import { INITIAL_RESOURCES, INITIAL_CONTRIBUTORS } from '../data/seedResources';
 import { INITIAL_DEPARTMENTS, DepartmentInfo } from '../data/departments';
 
 const STORAGE_KEYS = {
-  COURSES: 'uiu_courses_v2',
-  RESOURCES: 'uiu_resources_v2',
-  CONTRIBUTORS: 'uiu_contributors_v1',
+  COURSES: 'uiu_courses_v3',
+  RESOURCES: 'uiu_resources_v3',
+  CONTRIBUTORS: 'uiu_contributors_v3',
   DEPARTMENTS: 'uiu_departments_v1',
   PINNED_COURSES: 'uiu_pinned_courses_v1',
-  NOTE_REQUESTS: 'uiu_note_requests_v1',
+  NOTE_REQUESTS: 'uiu_note_requests_v2',
   R2_CONFIG: 'uiu_r2_config_v1',
   SUPABASE_CONFIG: 'uiu_supabase_config_v1',
   ADMIN_AUTH: 'uiu_admin_auth_v1',
-  ADMIN_CREDENTIALS: 'uiu_admin_credentials_v2'
+  ADMIN_CREDENTIALS: 'uiu_admin_credentials_v3',
+  CREATOR_PROFILE: 'uiu_creator_profile_v1'
+};
+
+export interface CreatorProfileData {
+  name: string;
+  department: string;
+  batch: string;
+  avatarUrl: string;
+  bio?: string;
+  githubUrl: string;
+  linkedinUrl: string;
+  facebookUrl: string;
+  email: string;
+}
+
+const DEFAULT_CREATOR_PROFILE: CreatorProfileData = {
+  name: 'Rakib Hossain',
+  department: 'Department of Computer Science & Engineering (CSE)',
+  batch: 'Batch 231',
+  avatarUrl: 'https://github.com/RakibHossain231.png',
+  bio: 'Hello fellow UIUans! I am an undergraduate student from the Department of CSE at United International University (UIU), Batch 231. I built UIU Note Share to ensure no student ever has to struggle or beg in Messenger groups the night before an exam for class notes or question solutions.',
+  githubUrl: 'https://github.com/RakibHossain231',
+  linkedinUrl: 'https://www.linkedin.com/in/rakibhossain231',
+  facebookUrl: 'https://www.facebook.com/RakibHossain231',
+  email: 'rakibhossain0308@yahoo.com'
 };
 
 export const StorageService = {
+  // Creator Profile
+  getCreatorProfile(): CreatorProfileData {
+    const raw = localStorage.getItem(STORAGE_KEYS.CREATOR_PROFILE);
+    if (!raw) {
+      this.saveCreatorProfile(DEFAULT_CREATOR_PROFILE);
+      return DEFAULT_CREATOR_PROFILE;
+    }
+    try {
+      return { ...DEFAULT_CREATOR_PROFILE, ...JSON.parse(raw) };
+    } catch {
+      return DEFAULT_CREATOR_PROFILE;
+    }
+  },
+
+  saveCreatorProfile(profile: CreatorProfileData): void {
+    localStorage.setItem(STORAGE_KEYS.CREATOR_PROFILE, JSON.stringify(profile));
+  },
+
   // Courses
   getCourses(): Course[] {
     const raw = localStorage.getItem(STORAGE_KEYS.COURSES);
@@ -105,11 +148,23 @@ export const StorageService = {
 
   addContributor(contributor: Contributor): void {
     const list = this.getContributors();
-    const existing = list.find(c => c.id === contributor.id || c.name.toLowerCase() === contributor.name.toLowerCase());
-    if (!existing) {
+    const existingIndex = list.findIndex(c => c.id === contributor.id || c.name.toLowerCase() === contributor.name.toLowerCase());
+    if (existingIndex >= 0) {
+      list[existingIndex] = { ...list[existingIndex], ...contributor };
+    } else {
       list.push(contributor);
-      this.saveContributors(list);
     }
+    this.saveContributors(list);
+  },
+
+  updateContributor(updated: Contributor): void {
+    const list = this.getContributors().map(c => c.id === updated.id ? updated : c);
+    this.saveContributors(list);
+  },
+
+  deleteContributor(id: string): void {
+    const list = this.getContributors().filter(c => c.id !== id);
+    this.saveContributors(list);
   },
 
   incrementContributorCount(contributorId: string): void {
@@ -179,10 +234,14 @@ export const StorageService = {
     }
   },
 
+  saveNoteRequests(requests: NoteRequest[]): void {
+    localStorage.setItem(STORAGE_KEYS.NOTE_REQUESTS, JSON.stringify(requests));
+  },
+
   addNoteRequest(req: NoteRequest): void {
     const list = this.getNoteRequests();
     list.unshift(req);
-    localStorage.setItem(STORAGE_KEYS.NOTE_REQUESTS, JSON.stringify(list));
+    this.saveNoteRequests(list);
   },
 
   // Admin Auth State & Security
@@ -200,9 +259,9 @@ export const StorageService = {
       try {
         const parsed = JSON.parse(raw);
         return {
-          email: parsed.email || 'admin@uiu.ac.bd',
-          password: parsed.password || localStorage.getItem('uiu_admin_password_custom') || 'uiuadmin123',
-          securityPin: parsed.securityPin || '786221',
+          email: parsed.email || 'rakibhossain0308@gmail.com',
+          password: parsed.password || '564566',
+          securityPin: parsed.securityPin || '564566',
           lastLogin: parsed.lastLogin,
           failedAttempts: Number(parsed.failedAttempts || 0),
           lockUntil: parsed.lockUntil ? Number(parsed.lockUntil) : undefined
@@ -211,11 +270,10 @@ export const StorageService = {
         // Fallback below
       }
     }
-    const legacyPass = localStorage.getItem('uiu_admin_password_custom') || 'uiuadmin123';
     const initialCreds: AdminCredentials = {
-      email: 'admin@uiu.ac.bd',
-      password: legacyPass,
-      securityPin: '786221',
+      email: 'rakibhossain0308@gmail.com',
+      password: '564566',
+      securityPin: '564566',
       failedAttempts: 0
     };
     this.saveAdminCredentials(initialCreds);
@@ -234,7 +292,6 @@ export const StorageService = {
       return { locked: true, remainingSeconds: remaining };
     }
     if (creds.lockUntil && Date.now() >= creds.lockUntil) {
-      // Lock expired, reset failed attempts
       creds.failedAttempts = 0;
       creds.lockUntil = undefined;
       this.saveAdminCredentials(creds);
@@ -246,7 +303,6 @@ export const StorageService = {
     const creds = this.getAdminCredentials();
     creds.failedAttempts = (creds.failedAttempts || 0) + 1;
     if (creds.failedAttempts >= 5) {
-      // Lock out for 15 minutes (900 seconds)
       const lockDurationMs = 15 * 60 * 1000;
       creds.lockUntil = Date.now() + lockDurationMs;
       this.saveAdminCredentials(creds);

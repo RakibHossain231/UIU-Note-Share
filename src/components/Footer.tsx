@@ -68,7 +68,7 @@ export const Footer: React.FC = () => {
             </p>
             <div className="flex items-center space-x-3 pt-1">
               <a 
-                href="https://github.com" 
+                href="https://github.com/RakibHossain231" 
                 target="_blank" 
                 rel="noreferrer"
                 className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 hover:text-white hover:bg-black dark:hover:bg-zinc-700 flex items-center justify-center transition-colors"
@@ -77,7 +77,7 @@ export const Footer: React.FC = () => {
                 <GithubIcon className="w-4 h-4" />
               </a>
               <a 
-                href="https://facebook.com" 
+                href="https://facebook.com/RakibHossain231" 
                 target="_blank" 
                 rel="noreferrer"
                 className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 hover:text-white hover:bg-blue-600 flex items-center justify-center transition-colors"
@@ -86,7 +86,7 @@ export const Footer: React.FC = () => {
                 <FacebookIcon className="w-4 h-4" />
               </a>
               <a 
-                href="https://linkedin.com" 
+                href="https://www.linkedin.com/in/rakibhossain231" 
                 target="_blank" 
                 rel="noreferrer"
                 className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 hover:text-white hover:bg-sky-600 flex items-center justify-center transition-colors"
@@ -95,9 +95,9 @@ export const Footer: React.FC = () => {
                 <LinkedinIcon className="w-4 h-4" />
               </a>
               <a 
-                href="mailto:contact@uiunoteshare.com" 
+                href="mailto:rakibhossain0308@yahoo.com" 
                 className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 hover:text-white hover:bg-[#FF6600] flex items-center justify-center transition-colors"
-                title="Email"
+                title="Yahoo Mail"
               >
                 <Mail className="w-4 h-4" />
               </a>
@@ -113,7 +113,7 @@ export const Footer: React.FC = () => {
             <div className="flex items-center space-x-1">
               <span>Made with</span>
               <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
-              <span>by Department of CSE, UIU</span>
+              <span>by Rakib Hossain, Dept. of CSE (Batch 231), UIU</span>
             </div>
             <Link 
               to="/admin" 

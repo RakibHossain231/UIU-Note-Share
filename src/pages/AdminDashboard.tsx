@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   ShieldCheck, 
   Lock, 
@@ -13,54 +13,66 @@ import {
   CheckCircle2, 
   AlertCircle, 
   Settings, 
-  Inbox,
-  LogOut,
-  Sparkles,
-  Search,
-  ExternalLink,
-  Eye,
-  EyeOff,
-  KeyRound,
-  Shield,
-  Clock,
-  ArrowLeft,
-  Mail,
-  Key,
-  ShieldAlert
+  Inbox, 
+  LogOut, 
+  Sparkles, 
+  Search, 
+  ExternalLink, 
+  Eye, 
+  EyeOff, 
+  KeyRound, 
+  Shield, 
+  Clock, 
+  ArrowLeft, 
+  Mail, 
+  Key, 
+  ShieldAlert,
+  Camera,
+  Copy,
+  RefreshCw,
+  UserCheck,
+  GraduationCap
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { Course, ResourceItem, Contributor, ResourceType } from '../types';
 import { CloudflareR2Service } from '../services/cloudflareR2Service';
+import { CreatorProfileData } from '../services/storageService';
 
 type AdminTab = 'courses' | 'resources' | 'contributors' | 'requests' | 'settings';
 
 export const AdminDashboard: React.FC = () => {
   const { 
     isAdmin, 
-    adminEmail,
+    adminEmail, 
     loginAdmin, 
-    loginStep1,
-    loginStep2,
-    updateAdminSecurity,
-    getLockStatus,
+    loginStep1, 
+    loginStep2, 
+    updateAdminSecurity, 
+    getLockStatus, 
     logoutAdmin, 
-    changeAdminPassword,
     courses, 
     addCourse, 
-    updateCourse,
-    deleteCourse,
+    updateCourse, 
+    deleteCourse, 
     resources, 
     addResource, 
-    deleteResource,
+    deleteResource, 
     contributors, 
-    addContributor,
-    departments,
+    addContributor, 
+    updateContributor,
+    deleteContributor,
+    creatorProfile,
+    updateCreatorProfile,
+    isCloudConnected,
+    supabaseStatus,
+    syncWithCloud,
+    departments, 
     noteRequests 
   } = useData();
 
   // 2-Step Login form state
   const [loginStep, setLoginStep] = useState<1 | 2>(1);
-  const [emailInput, setEmailInput] = useState<string>('admin@uiu.ac.bd');
+  const [emailInput, setEmailInput] = useState<string>('rakibhossain0308@gmail.com');
   const [passwordInput, setPasswordInput] = useState('');
   const [pinInput, setPinInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -74,6 +86,109 @@ export const AdminDashboard: React.FC = () => {
   const [editConfirmPass, setEditConfirmPass] = useState('');
   const [editNewPin, setEditNewPin] = useState('');
   const [securityStatus, setSecurityStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+  // Creator Profile management state in Settings tab
+  const [editCreator, setEditCreator] = useState<CreatorProfileData>(creatorProfile);
+  const [creatorSaveStatus, setCreatorSaveStatus] = useState<string | null>(null);
+  const creatorFileRef = useRef<HTMLInputElement | null>(null);
+
+  // Active admin tab
+  const [activeTab, setActiveTab] = useState<AdminTab>('courses');
+
+  // Course modal state
+  const [courseModalOpen, setCourseModalOpen] = useState(false);
+  const [newCourse, setNewCourse] = useState<Partial<Course>>({
+    code: '',
+    title: '',
+    abbr: '',
+    department: 'CSE',
+    trimester: 1,
+    color: '#FF6600',
+    description: '',
+    credit: 3
+  });
+
+  // Edit Course state
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+
+  // Resource modal state
+  const [resourceModalOpen, setResourceModalOpen] = useState(false);
+  const [newResource, setNewResource] = useState<{
+    courseId: string;
+    type: ResourceType;
+    title: string;
+    description: string;
+    trimesterCode: string;
+    ctNumber: number;
+    assignmentNumber: number;
+    hasSolution: boolean;
+    storageType: 'r2' | 'drive' | 'direct_url';
+    fileUrl: string;
+    fileSize: string;
+    contributorId: string;
+    newContribName: string;
+    newContribDept: string;
+    newContribBatch: string;
+    newContribSocial: string;
+    newContribPlatform: 'facebook' | 'linkedin' | 'github' | 'email';
+  }>({
+    courseId: courses[0]?.id || 'cse-1111',
+    type: 'handnote',
+    title: '',
+    description: '',
+    trimesterCode: '241',
+    ctNumber: 1,
+    assignmentNumber: 1,
+    hasSolution: true,
+    storageType: 'drive',
+    fileUrl: '',
+    fileSize: '2.5 MB',
+    contributorId: contributors[0]?.id || '',
+    newContribName: '',
+    newContribDept: 'CSE',
+    newContribBatch: 'Batch 231',
+    newContribSocial: '',
+    newContribPlatform: 'facebook'
+  });
+
+  // Contributor modal state (Add)
+  const [contribModalOpen, setContribModalOpen] = useState(false);
+  const [newContrib, setNewContrib] = useState({
+    name: '',
+    department: 'CSE',
+    batch: 'Batch 231',
+    avatarUrl: '',
+    socialUrl: '',
+    socialType: 'facebook' as const
+  });
+  const contribFileRef = useRef<HTMLInputElement | null>(null);
+
+  // Contributor modal state (Edit)
+  const [editingContrib, setEditingContrib] = useState<Contributor | null>(null);
+  const editContribFileRef = useRef<HTMLInputElement | null>(null);
+
+  // Settings state
+  const [r2PublicDomain, setR2PublicDomain] = useState(
+    CloudflareR2Service.getConfig()?.publicDomain || ''
+  );
+  const [r2BucketName, setR2BucketName] = useState(
+    CloudflareR2Service.getConfig()?.bucketName || ''
+  );
+  const [settingsSaved, setSettingsSaved] = useState(false);
+  const [copiedSql, setCopiedSql] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Search in tables
+  const [adminSearch, setAdminSearch] = useState('');
+
+  // Sync creator state when context updates
+  useEffect(() => {
+    setEditCreator(creatorProfile);
+  }, [creatorProfile]);
+
+  useEffect(() => {
+    setEditAdminEmail(adminEmail);
+  }, [adminEmail]);
 
   // Check brute-force lock status on mount
   useEffect(() => {
@@ -98,98 +213,6 @@ export const AdminDashboard: React.FC = () => {
     return () => clearInterval(timer);
   }, [lockSeconds]);
 
-  useEffect(() => {
-    setEditAdminEmail(adminEmail);
-  }, [adminEmail]);
-
-  // Active admin tab
-  const [activeTab, setActiveTab] = useState<AdminTab>('courses');
-
-  // Course modal state
-  const [courseModalOpen, setCourseModalOpen] = useState(false);
-  const [newCourse, setNewCourse] = useState<Partial<Course>>({
-    code: '',
-    title: '',
-    abbr: '',
-    department: 'CSE',
-    trimester: 1,
-    color: '#FF6600',
-    description: '',
-    credit: 3
-  });
-
-  // Edit Course state
-  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
-
-  // Legacy password change state (for compatibility)
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordStatus, setPasswordStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
-
-  // Resource modal state
-  const [resourceModalOpen, setResourceModalOpen] = useState(false);
-  const [newResource, setNewResource] = useState<{
-    courseId: string;
-    type: ResourceType;
-    title: string;
-    description: string;
-    trimesterCode: string;
-    ctNumber: number;
-    assignmentNumber: number;
-    hasSolution: boolean;
-    storageType: 'r2' | 'drive' | 'direct_url';
-    fileUrl: string;
-    fileSize: string;
-    contributorId: string;
-    newContribName: string;
-    newContribDept: string;
-    newContribBatch: string;
-    newContribSocial: string;
-    newContribPlatform: 'facebook' | 'linkedin' | 'github' | 'email';
-  }>({
-    courseId: courses[0]?.id || '',
-    type: 'handnote',
-    title: '',
-    description: '',
-    trimesterCode: '241',
-    ctNumber: 1,
-    assignmentNumber: 1,
-    hasSolution: true,
-    storageType: 'r2',
-    fileUrl: '',
-    fileSize: '2.5 MB',
-    contributorId: contributors[0]?.id || '',
-    newContribName: '',
-    newContribDept: 'CSE',
-    newContribBatch: 'Batch 231',
-    newContribSocial: '',
-    newContribPlatform: 'facebook'
-  });
-
-  // Contributor modal state
-  const [contribModalOpen, setContribModalOpen] = useState(false);
-  const [newContrib, setNewContrib] = useState({
-    name: '',
-    department: 'CSE',
-    batch: 'Batch 231',
-    avatarUrl: '',
-    socialUrl: '',
-    socialType: 'facebook' as const
-  });
-
-  // Settings state
-  const [r2PublicDomain, setR2PublicDomain] = useState(
-    CloudflareR2Service.getConfig()?.publicDomain || ''
-  );
-  const [r2BucketName, setR2BucketName] = useState(
-    CloudflareR2Service.getConfig()?.bucketName || ''
-  );
-  const [settingsSaved, setSettingsSaved] = useState(false);
-
-  // Search in tables
-  const [adminSearch, setAdminSearch] = useState('');
-
   // Handle Step 1 Login (Email + Password)
   const handleStep1Submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -199,25 +222,22 @@ export const AdminDashboard: React.FC = () => {
       setLockSeconds(res.remainingSeconds || 900);
       setLoginFeedback({
         type: 'error',
-        msg: res.message || 'Account locked for 15 minutes due to consecutive failed attempts.'
+        msg: res.message || 'Account is locked for 15 minutes due to too many failed attempts.'
       });
       return;
     }
     if (!res.success) {
       setLoginFeedback({
         type: 'error',
-        msg: res.message || 'Incorrect email or password.'
+        msg: res.message || 'Invalid administrator email or password.'
       });
       return;
     }
     setLoginStep(2);
-    setLoginFeedback({
-      type: 'success',
-      msg: 'Identity verified! Enter your 6-digit security code / PIN.'
-    });
+    setPinInput('');
   };
 
-  // Handle Step 2 Login (6-Digit Security PIN / 2FA)
+  // Handle Step 2 Login (6-Digit Security PIN)
   const handleStep2Submit = (e: React.FormEvent) => {
     e.preventDefault();
     setLoginFeedback(null);
@@ -225,63 +245,81 @@ export const AdminDashboard: React.FC = () => {
     if (!res.success) {
       setLoginFeedback({
         type: 'error',
-        msg: res.message || 'Invalid 6-digit verification code.'
+        msg: res.message || 'Incorrect security PIN. Please try again.'
       });
       return;
     }
-    setLoginFeedback(null);
+    setLoginStep(1);
     setPasswordInput('');
     setPinInput('');
-    setLoginStep(1);
   };
 
-  // Handle Update Complete Security Credentials (Email + Pass + 2FA PIN)
+  // Handle Update Security Settings
   const handleUpdateSecuritySubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setSecurityStatus(null);
-
     if (editNewPass && editNewPass !== editConfirmPass) {
       setSecurityStatus({ type: 'error', msg: 'New password and confirmation do not match.' });
       return;
     }
-
-    if (editNewPin && editNewPin.trim().length !== 6) {
-      setSecurityStatus({ type: 'error', msg: '2FA Security PIN must be exactly 6 digits.' });
-      return;
-    }
-
     const res = updateAdminSecurity(editAdminEmail, editCurrentPass, editNewPass, editNewPin);
-    if (!res.success) {
-      setSecurityStatus({ type: 'error', msg: res.message });
-    } else {
+    if (res.success) {
       setSecurityStatus({ type: 'success', msg: res.message });
       setEditCurrentPass('');
       setEditNewPass('');
       setEditConfirmPass('');
       setEditNewPin('');
-      setTimeout(() => setSecurityStatus(null), 4000);
+    } else {
+      setSecurityStatus({ type: 'error', msg: res.message });
     }
   };
 
-  // Handle Create Course
+  // Handle Creator Profile Save
+  const handleSaveCreatorProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreatorSaveStatus('Saving profile...');
+    const ok = await updateCreatorProfile(editCreator);
+    if (ok) {
+      setCreatorSaveStatus('Profile saved and synced with cloud!');
+    } else {
+      setCreatorSaveStatus('Saved locally (cloud offline).');
+    }
+    setTimeout(() => setCreatorSaveStatus(null), 3000);
+  };
+
+  // Handle File to Base64 image upload
+  const handleImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>, callback: (dataUrl: string) => void) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Image size should be under 2MB for optimal performance.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (typeof event.target?.result === 'string') {
+        callback(event.target.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Create course handler
   const handleCreateCourse = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCourse.code || !newCourse.title) return;
-
-    const courseId = newCourse.code.toLowerCase().replace(/[\s_]/g, '-');
-    const created: Course = {
-      id: courseId,
+    const id = newCourse.code.toLowerCase().replace(/\s+/g, '-');
+    addCourse({
+      id,
       code: newCourse.code.trim().toUpperCase(),
       title: newCourse.title.trim(),
-      abbr: newCourse.abbr?.trim() || newCourse.code.substring(0, 4),
+      abbr: newCourse.abbr?.trim() || undefined,
       department: newCourse.department || 'CSE',
       trimester: Number(newCourse.trimester) || 1,
       color: newCourse.color || '#FF6600',
-      description: newCourse.description || '',
+      description: newCourse.description?.trim() || undefined,
       credit: Number(newCourse.credit) || 3
-    };
-
-    addCourse(created);
+    });
     setCourseModalOpen(false);
     setNewCourse({
       code: '',
@@ -295,48 +333,23 @@ export const AdminDashboard: React.FC = () => {
     });
   };
 
-  // Handle Update Course (Edit)
+  // Update course handler
   const handleUpdateCourseSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingCourse || !editingCourse.title || !editingCourse.code) return;
+    if (!editingCourse) return;
     updateCourse(editingCourse);
     setEditingCourse(null);
   };
 
-  // Handle Change Admin Password
-  const handleChangePassword = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPassword || newPassword.length < 4) {
-      setPasswordStatus({ type: 'error', msg: 'Password must be at least 4 characters long.' });
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setPasswordStatus({ type: 'error', msg: 'New passwords do not match.' });
-      return;
-    }
-    const success = changeAdminPassword(currentPassword, newPassword);
-    if (!success) {
-      setPasswordStatus({ type: 'error', msg: 'Current password is incorrect.' });
-    } else {
-      setPasswordStatus({ type: 'success', msg: 'Admin password updated successfully! Please remember it.' });
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      setTimeout(() => setPasswordStatus(null), 3500);
-    }
-  };
-
-  // Handle Create Resource
+  // Create resource handler
   const handleCreateResource = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newResource.title || !newResource.fileUrl) return;
 
-    const selectedCourse = courses.find(c => c.id === newResource.courseId) || courses[0];
+    let targetContributor: Contributor | undefined;
 
-    // Determine contributor
-    let chosenContributor: Contributor | undefined;
     if (newResource.newContribName.trim()) {
-      chosenContributor = {
+      targetContributor = {
         id: 'contrib-' + Date.now(),
         name: newResource.newContribName.trim(),
         department: newResource.newContribDept,
@@ -345,40 +358,53 @@ export const AdminDashboard: React.FC = () => {
         socialType: newResource.newContribPlatform,
         contributionsCount: 1
       };
-      addContributor(chosenContributor);
+      addContributor(targetContributor);
     } else {
-      chosenContributor = contributors.find(c => c.id === newResource.contributorId);
+      targetContributor = contributors.find(c => c.id === newResource.contributorId) || contributors[0];
     }
+
+    const course = courses.find(c => c.id === newResource.courseId);
 
     const item: ResourceItem = {
       id: 'res-' + Date.now(),
-      courseId: selectedCourse.id,
-      department: selectedCourse.department,
+      courseId: newResource.courseId,
+      department: course?.department || 'CSE',
       type: newResource.type,
       title: newResource.title.trim(),
-      description: newResource.description.trim(),
-      trimesterCode: newResource.trimesterCode,
-      ctNumber: (newResource.type === 'ct' || newResource.type === 'ct_question' || newResource.type === 'ct_solve') ? Number(newResource.ctNumber) : undefined,
-      assignmentNumber: (newResource.type === 'assignment' || newResource.type === 'assignment_question' || newResource.type === 'assignment_solve') ? Number(newResource.assignmentNumber) : undefined,
-      hasSolution: (newResource.type === 'mid_solve' || newResource.type === 'final_solve' || newResource.type === 'ct_solve' || newResource.type === 'assignment_solve') ? true : newResource.hasSolution,
+      description: newResource.description.trim() || undefined,
+      trimesterCode: newResource.trimesterCode || undefined,
       storageType: newResource.storageType,
       fileUrl: newResource.fileUrl.trim(),
-      fileSize: newResource.fileSize || '3 MB',
+      hasSolution: newResource.hasSolution,
+      fileSize: newResource.fileSize || '2.5 MB',
       uploadDate: new Date().toISOString().split('T')[0],
-      contributor: chosenContributor
+      contributor: targetContributor
     };
 
     addResource(item);
     setResourceModalOpen(false);
     setNewResource({
-      ...newResource,
+      courseId: courses[0]?.id || 'cse-1111',
+      type: 'handnote',
       title: '',
       description: '',
-      fileUrl: ''
+      trimesterCode: '241',
+      ctNumber: 1,
+      assignmentNumber: 1,
+      hasSolution: true,
+      storageType: 'drive',
+      fileUrl: '',
+      fileSize: '2.5 MB',
+      contributorId: contributors[0]?.id || '',
+      newContribName: '',
+      newContribDept: 'CSE',
+      newContribBatch: 'Batch 231',
+      newContribSocial: '',
+      newContribPlatform: 'facebook'
     });
   };
 
-  // Handle Save Settings
+  // Save Settings
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
     CloudflareR2Service.saveConfig({
@@ -389,75 +415,142 @@ export const AdminDashboard: React.FC = () => {
       publicDomain: r2PublicDomain
     });
     setSettingsSaved(true);
-    setTimeout(() => setSettingsSaved(false), 2500);
+    setTimeout(() => setSettingsSaved(false), 3000);
   };
 
-  // If not logged in, show 2-Step Verified Login Screen
-  if (!isAdmin) {
-    // Case 1: Brute-Force Lockout Active
-    if (lockSeconds > 0) {
-      const minutes = Math.floor(lockSeconds / 60);
-      const seconds = lockSeconds % 60;
-      return (
-        <div className="min-h-[75vh] flex items-center justify-center px-4">
-          <div className="max-w-md w-full bg-white dark:bg-[#1A1A1A] border border-rose-200 dark:border-rose-900/60 rounded-3xl p-8 shadow-2xl text-center space-y-5">
-            <div className="w-16 h-16 rounded-3xl bg-rose-100 text-rose-600 dark:bg-rose-950/60 flex items-center justify-center mx-auto shadow-inner animate-pulse">
-              <ShieldAlert className="w-8 h-8" />
-            </div>
-            <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white">
-              Security Lockout Active
-            </h2>
-            <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
-              Too many consecutive failed login attempts detected. To protect UIU Note Share from unauthorized password theft, admin access is temporarily locked.
-            </p>
-            <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40">
-              <div className="text-xs text-rose-600 dark:text-rose-400 font-semibold mb-1">Time Remaining Before Unlock</div>
-              <div className="text-3xl font-black font-mono text-rose-600 dark:text-rose-400">
-                {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
-              </div>
-            </div>
-            <p className="text-[11px] text-gray-400">
-              Please wait for the timer to expire, or refresh after cooldown period ends.
-            </p>
-          </div>
-        </div>
-      );
-    }
+  const handleCopySqlScript = () => {
+    const sql = `-- Run this in Supabase Dashboard -> SQL Editor
+create table if not exists public.courses (
+  id text primary key,
+  code text not null,
+  title text not null,
+  abbr text,
+  department text not null,
+  trimester integer not null,
+  color text default '#FF6600',
+  description text,
+  credit numeric default 3,
+  created_at timestamp with time zone default now()
+);
 
-    // Case 2: Step 1 of 2 (Email + Password)
+create table if not exists public.contributors (
+  id text primary key,
+  name text not null,
+  department text not null,
+  batch text,
+  avatar_url text,
+  social_url text,
+  social_type text default 'facebook',
+  contributions_count integer default 0,
+  created_at timestamp with time zone default now()
+);
+
+create table if not exists public.resources (
+  id text primary key,
+  course_id text not null references public.courses(id) on delete cascade,
+  department text not null,
+  type text not null,
+  title text not null,
+  description text,
+  trimester_code text,
+  term text,
+  ct_number integer,
+  assignment_number integer,
+  storage_type text not null default 'drive',
+  file_url text not null,
+  has_solution boolean default false,
+  solution_url text,
+  file_size text,
+  upload_date text,
+  contributor_id text references public.contributors(id) on delete set null,
+  created_at timestamp with time zone default now()
+);
+
+create table if not exists public.note_requests (
+  id text primary key,
+  course_code text not null,
+  course_title text not null,
+  resource_type text not null,
+  requested_by text not null,
+  contact_info text,
+  notes text,
+  status text default 'pending',
+  created_at timestamp with time zone default now()
+);
+
+create table if not exists public.creator_profile (
+  id text primary key default 'creator',
+  name text not null default 'Rakib Hossain',
+  department text not null default 'CSE',
+  batch text default 'Batch 231',
+  avatar_url text default 'https://github.com/RakibHossain231.png',
+  bio text,
+  github_url text default 'https://github.com/RakibHossain231',
+  linkedin_url text default 'https://www.linkedin.com/in/rakibhossain231',
+  facebook_url text default 'https://www.facebook.com/RakibHossain231',
+  email text default 'rakibhossain0308@yahoo.com',
+  updated_at timestamp with time zone default now()
+);
+
+insert into public.creator_profile (id, name, department, batch, avatar_url, github_url, linkedin_url, facebook_url, email)
+values ('creator', 'Rakib Hossain', 'CSE', 'Batch 231', 'https://github.com/RakibHossain231.png', 'https://github.com/RakibHossain231', 'https://www.linkedin.com/in/rakibhossain231', 'https://www.facebook.com/RakibHossain231', 'rakibhossain0308@yahoo.com')
+on conflict (id) do nothing;
+
+alter table public.courses enable row level security;
+alter table public.contributors enable row level security;
+alter table public.resources enable row level security;
+alter table public.note_requests enable row level security;
+alter table public.creator_profile enable row level security;
+
+create policy "Enable all for courses" on public.courses for all using (true) with check (true);
+create policy "Enable all for contributors" on public.contributors for all using (true) with check (true);
+create policy "Enable all for resources" on public.resources for all using (true) with check (true);
+create policy "Enable all for note_requests" on public.note_requests for all using (true) with check (true);
+create policy "Enable all for creator_profile" on public.creator_profile for all using (true) with check (true);`;
+
+    navigator.clipboard.writeText(sql);
+    setCopiedSql(true);
+    setTimeout(() => setCopiedSql(false), 2500);
+  };
+
+  // ------------------------------------------------------------------
+  // RENDER: NOT LOGGED IN (2-STEP AUTHENTICATION)
+  // ------------------------------------------------------------------
+  if (!isAdmin) {
     if (loginStep === 1) {
       return (
         <div className="min-h-[75vh] flex items-center justify-center px-4">
           <div className="max-w-md w-full bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-3xl p-8 shadow-2xl space-y-6">
             <div className="text-center">
               <div className="w-14 h-14 rounded-2xl bg-orange-100 text-[#FF6600] dark:bg-orange-950/60 flex items-center justify-center mx-auto mb-4 shadow-inner">
-                <Lock className="w-7 h-7" />
+                <Shield className="w-7 h-7" />
               </div>
               <div className="inline-flex items-center space-x-1 px-3 py-0.5 rounded-full text-[10px] font-extrabold bg-orange-100 dark:bg-orange-950/50 text-[#FF6600] uppercase tracking-wider mb-2">
-                Step 1 of 2 • Identity Gate
+                Step 1 of 2 • Identity Verification
               </div>
               <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white">
-                Admin Authentication
+                Admin Control Center
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Enter your registered Administrator Email and Master Password.
+                Enter your registered administrator email and master password to proceed.
               </p>
             </div>
 
             <form onSubmit={handleStep1Submit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                  Admin Email Address *
+                  Admin Registered Email *
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     type="email"
                     required
-                    placeholder="admin@uiu.ac.bd"
+                    autoFocus
+                    placeholder="rakibhossain0308@gmail.com"
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-50 dark:bg-zinc-800/90 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-[#FF6600]"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-50 dark:bg-zinc-800/90 border border-gray-200 dark:border-zinc-700 text-xs text-gray-900 dark:text-white focus:outline-none focus:border-[#FF6600]"
                   />
                 </div>
               </div>
@@ -471,10 +564,10 @@ export const AdminDashboard: React.FC = () => {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
-                    placeholder="Enter password"
+                    placeholder="••••••••"
                     value={passwordInput}
                     onChange={(e) => setPasswordInput(e.target.value)}
-                    className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-gray-50 dark:bg-zinc-800/90 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-[#FF6600]"
+                    className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-gray-50 dark:bg-zinc-800/90 border border-gray-200 dark:border-zinc-700 text-xs text-gray-900 dark:text-white focus:outline-none focus:border-[#FF6600]"
                   />
                   <button
                     type="button"
@@ -508,7 +601,7 @@ export const AdminDashboard: React.FC = () => {
 
             <div className="pt-3 border-t border-gray-100 dark:border-zinc-800 text-center">
               <span className="text-[11px] text-gray-400">
-                Default: <code className="bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-orange-500">admin@uiu.ac.bd</code> • <code className="bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-orange-500">uiuadmin123</code>
+                Default: <code className="bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-orange-500">rakibhossain0308@gmail.com</code> • <code className="bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-orange-500">564566</code>
               </span>
             </div>
           </div>
@@ -516,7 +609,7 @@ export const AdminDashboard: React.FC = () => {
       );
     }
 
-    // Case 3: Step 2 of 2 (6-Digit Security PIN / 2FA)
+    // Case 2: Step 2 of 2 (6-Digit Security PIN / 2FA)
     return (
       <div className="min-h-[75vh] flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-3xl p-8 shadow-2xl space-y-6">
@@ -586,7 +679,7 @@ export const AdminDashboard: React.FC = () => {
 
           <div className="pt-3 border-t border-gray-100 dark:border-zinc-800 text-center">
             <span className="text-[11px] text-gray-400">
-              Default 2FA PIN: <code className="bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-emerald-500">786221</code> (Customizable inside Settings)
+              Default 2FA PIN: <code className="bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-emerald-500">564566</code>
             </span>
           </div>
         </div>
@@ -594,6 +687,9 @@ export const AdminDashboard: React.FC = () => {
     );
   }
 
+  // ------------------------------------------------------------------
+  // RENDER: ADMIN DASHBOARD (LOGGED IN)
+  // ------------------------------------------------------------------
   return (
     <div className="space-y-8 pb-20">
       
@@ -614,9 +710,20 @@ export const AdminDashboard: React.FC = () => {
               <span className="text-[11px] font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded-lg border border-gray-200 dark:border-zinc-700">
                 {adminEmail}
               </span>
+              {isCloudConnected ? (
+                <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+                  <span>Supabase Cloud Connected</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  <span>Offline / Local Cache</span>
+                </span>
+              )}
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              Manage courses, upload Cloudflare R2 / Drive notes, and attribute contributors.
+              Creator: {creatorProfile.name} • Dept of {creatorProfile.department} ({creatorProfile.batch})
             </p>
           </div>
         </div>
@@ -675,7 +782,7 @@ export const AdminDashboard: React.FC = () => {
           { key: 'resources', label: 'Notes & Exam Solves', icon: FileText, count: resources.length },
           { key: 'contributors', label: 'Contributors', icon: Users, count: contributors.length },
           { key: 'requests', label: 'Student Requests', icon: Inbox, count: noteRequests.length },
-          { key: 'settings', label: 'Cloud Storage (R2/Supabase)', icon: Settings },
+          { key: 'settings', label: 'Settings & Cloud Database', icon: Settings },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
@@ -749,31 +856,31 @@ export const AdminDashboard: React.FC = () => {
                         <tr key={course.id} className="hover:bg-gray-50/50 dark:hover:bg-zinc-800/50">
                           <td className="px-4 py-3 font-bold text-[#FF6600]">{course.code}</td>
                           <td className="px-4 py-3 font-medium">{course.title}</td>
+                          <td className="px-4 py-3">{course.department}</td>
+                          <td className="px-4 py-3">Trimester {course.trimester}</td>
                           <td className="px-4 py-3">
-                            <span className="px-2 py-0.5 rounded bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 font-semibold text-[10px]">
-                              {course.department}
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300">
+                              {notesCount} notes
                             </span>
                           </td>
-                          <td className="px-4 py-3">Trimester {course.trimester}</td>
-                          <td className="px-4 py-3 font-semibold">{notesCount} items</td>
-                          <td className="px-4 py-3 text-right space-x-1">
+                          <td className="px-4 py-3 text-right space-x-2">
                             <button
-                              onClick={() => setEditingCourse({ ...course })}
-                              className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
-                              title="Edit Course"
+                              onClick={() => setEditingCourse(course)}
+                              className="text-gray-400 hover:text-blue-500 transition-colors"
+                              title="Edit Course Name / Code"
                             >
-                              <Edit3 className="w-4 h-4" />
+                              <Edit3 className="w-4 h-4 inline" />
                             </button>
                             <button
                               onClick={() => {
-                                if (window.confirm(`Delete ${course.code}?`)) {
+                                if (window.confirm(`Delete ${course.code} - ${course.title}?`)) {
                                   deleteCourse(course.id);
                                 }
                               }}
-                              className="p-1 text-gray-400 hover:text-rose-500 transition-colors"
+                              className="text-gray-400 hover:text-rose-500 transition-colors"
                               title="Delete Course"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-4 h-4 inline" />
                             </button>
                           </td>
                         </tr>
@@ -786,82 +893,92 @@ export const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 2: RESOURCES MANAGEMENT */}
+      {/* TAB 2: RESOURCES / NOTES */}
       {activeTab === 'resources' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-500">Showing {resources.length} uploaded notes & exam solves</span>
+            <span className="text-xs text-gray-500">{resources.length} active notes & solves</span>
             <button
               onClick={() => setResourceModalOpen(true)}
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#FF6600] text-white hover:bg-orange-600"
             >
               <PlusCircle className="w-3.5 h-3.5" />
-              <span>Upload Note / Solve</span>
+              <span>Add Note</span>
             </button>
           </div>
 
-          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-gray-50 dark:bg-zinc-800/80 text-gray-500 uppercase text-[10px] tracking-wider border-b border-gray-200 dark:border-zinc-700">
-                  <tr>
-                    <th className="px-4 py-3">Type</th>
-                    <th className="px-4 py-3">Title</th>
-                    <th className="px-4 py-3">Course</th>
-                    <th className="px-4 py-3">Storage</th>
-                    <th className="px-4 py-3">Contributor</th>
-                    <th className="px-4 py-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-zinc-800 text-gray-800 dark:text-gray-200">
-                  {resources.map((item) => {
-                    const course = courses.find(c => c.id === item.courseId);
-                    return (
-                      <tr key={item.id} className="hover:bg-gray-50/50 dark:hover:bg-zinc-800/50">
-                        <td className="px-4 py-3 font-semibold capitalize text-orange-600">
-                          {item.type.replace('_', ' ')}
-                        </td>
-                        <td className="px-4 py-3 font-medium max-w-xs truncate">{item.title}</td>
-                        <td className="px-4 py-3 font-bold">{course?.code || item.courseId}</td>
-                        <td className="px-4 py-3">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            item.storageType === 'drive'
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
-                              : 'bg-sky-100 text-sky-800 dark:bg-sky-950/40 dark:text-sky-300'
-                          }`}>
-                            {item.storageType.toUpperCase()}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-gray-500">{item.contributor?.name || 'Anonymous'}</td>
-                        <td className="px-4 py-3 text-right space-x-2">
-                          <a
-                            href={item.fileUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-gray-400 hover:text-black dark:hover:text-white"
-                            title="Open Link"
-                          >
-                            <ExternalLink className="w-4 h-4 inline" />
-                          </a>
-                          <button
-                            onClick={() => {
-                              if (window.confirm(`Delete ${item.title}?`)) {
-                                deleteResource(item.id);
-                              }
-                            }}
-                            className="text-gray-400 hover:text-rose-500"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4 inline" />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          {resources.length === 0 ? (
+            <div className="text-center py-16 bg-white dark:bg-[#1A1A1A] rounded-2xl border border-gray-200 dark:border-zinc-800 space-y-2">
+              <FileText className="w-10 h-10 text-gray-300 dark:text-zinc-700 mx-auto" />
+              <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200">No Notes Uploaded Yet</h4>
+              <p className="text-xs text-gray-400 max-w-sm mx-auto">
+                All mock dummy notes have been cleaned out. Click "Add Note" to add your first real lecture note or exam solve using Google Drive!
+              </p>
             </div>
-          </div>
+          ) : (
+            <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-gray-50 dark:bg-zinc-800/80 text-gray-500 uppercase text-[10px] tracking-wider border-b border-gray-200 dark:border-zinc-700">
+                    <tr>
+                      <th className="px-4 py-3">Type</th>
+                      <th className="px-4 py-3">Title</th>
+                      <th className="px-4 py-3">Course</th>
+                      <th className="px-4 py-3">Storage</th>
+                      <th className="px-4 py-3">Contributor</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-zinc-800 text-gray-800 dark:text-gray-200">
+                    {resources.map((item) => {
+                      const course = courses.find(c => c.id === item.courseId);
+                      return (
+                        <tr key={item.id} className="hover:bg-gray-50/50 dark:hover:bg-zinc-800/50">
+                          <td className="px-4 py-3 font-semibold capitalize text-orange-600">
+                            {item.type.replace('_', ' ')}
+                          </td>
+                          <td className="px-4 py-3 font-medium max-w-xs truncate">{item.title}</td>
+                          <td className="px-4 py-3 font-bold">{course?.code || item.courseId}</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              item.storageType === 'drive'
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                : 'bg-sky-100 text-sky-800 dark:bg-sky-950/40 dark:text-sky-300'
+                            }`}>
+                              {item.storageType.toUpperCase()}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-gray-500">{item.contributor?.name || 'Anonymous'}</td>
+                          <td className="px-4 py-3 text-right space-x-2">
+                            <a
+                              href={item.fileUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-gray-400 hover:text-black dark:hover:text-white"
+                              title="Open Link"
+                            >
+                              <ExternalLink className="w-4 h-4 inline" />
+                            </a>
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`Delete ${item.title}?`)) {
+                                  deleteResource(item.id);
+                                }
+                              }}
+                              className="text-gray-400 hover:text-rose-500"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4 inline" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -869,29 +986,79 @@ export const AdminDashboard: React.FC = () => {
       {activeTab === 'contributors' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-500">{contributors.length} registered contributors</span>
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                Wall of Contributors Management
+              </h3>
+              <p className="text-xs text-gray-500">
+                Add, edit, or delete contributors and click to set their profile pictures.
+              </p>
+            </div>
             <button
               onClick={() => setContribModalOpen(true)}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#FF6600] text-white hover:bg-orange-600"
+              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#FF6600] text-white hover:bg-orange-600 shadow"
             >
               <PlusCircle className="w-3.5 h-3.5" />
               <span>Add Contributor</span>
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {contributors.map((c) => (
-              <div key={c.id} className="p-4 rounded-2xl bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl bg-orange-500 text-white flex items-center justify-center font-bold">
-                  {c.name.charAt(0)}
+              <div 
+                key={c.id} 
+                className="p-4 rounded-2xl bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 flex items-center justify-between gap-3 shadow-sm hover:border-orange-500/40 transition-all"
+              >
+                <div className="flex items-center space-x-3 truncate">
+                  <div className="w-12 h-12 rounded-2xl overflow-hidden bg-gradient-to-tr from-[#FF6600] to-amber-500 flex items-center justify-center text-white font-extrabold text-sm shrink-0 ring-2 ring-orange-500/20">
+                    {c.avatarUrl ? (
+                      <img 
+                        src={c.avatarUrl} 
+                        alt={c.name} 
+                        className="w-full h-full object-cover" 
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }} 
+                      />
+                    ) : (
+                      <span>{c.name.charAt(0)}</span>
+                    )}
+                  </div>
+                  <div className="truncate">
+                    <h4 className="text-sm font-bold text-gray-900 dark:text-white truncate">
+                      {c.name}
+                    </h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {c.department} • {c.batch || 'Student'}
+                    </p>
+                    <span className="text-[10px] font-semibold text-[#FF6600]">
+                      {c.contributionsCount || 0} contributions
+                    </span>
+                  </div>
                 </div>
-                <div className="flex-1 truncate">
-                  <h4 className="text-sm font-bold text-gray-900 dark:text-white truncate">{c.name}</h4>
-                  <p className="text-xs text-gray-400">{c.department} • {c.batch || 'Student'}</p>
+
+                <div className="flex items-center space-x-1 shrink-0">
+                  <button
+                    onClick={() => setEditingContrib(c)}
+                    className="p-1.5 text-gray-400 hover:text-blue-500 rounded-lg hover:bg-blue-50 dark:hover:bg-zinc-800 transition-colors"
+                    title="Edit Contributor"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                  {contributors.length > 1 && (
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Delete contributor ${c.name}?`)) {
+                          deleteContributor(c.id);
+                        }
+                      }}
+                      className="p-1.5 text-gray-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-zinc-800 transition-colors"
+                      title="Delete Contributor"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
-                <span className="text-xs font-bold text-[#FF6600] px-2 py-0.5 rounded-full bg-orange-50 dark:bg-orange-950/40">
-                  {c.contributionsCount || 1}
-                </span>
               </div>
             ))}
           </div>
@@ -933,122 +1100,287 @@ export const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 5: CLOUD STORAGE & SUPABASE SETTINGS */}
+      {/* TAB 5: SETTINGS & CLOUD DATABASE */}
       {activeTab === 'settings' && (
-        <div className="max-w-2xl bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 space-y-6">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 flex items-center justify-center">
-              <Cloud className="w-5 h-5" />
+        <div className="space-y-8 max-w-3xl">
+          
+          {/* SUPABASE STATUS CARD */}
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 flex items-center justify-center">
+                  <Cloud className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                    Supabase Cloud Database
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    Project: <code className="bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-emerald-600 font-mono">zupoqrpdcptuxatmztuy</code>
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={async () => {
+                  setIsSyncing(true);
+                  await syncWithCloud();
+                  setIsSyncing(false);
+                }}
+                disabled={isSyncing}
+                className="flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-semibold bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 text-gray-700 dark:text-gray-200 transition-colors"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span>{isSyncing ? 'Syncing...' : 'Sync Now'}</span>
+              </button>
             </div>
-            <div>
-              <h3 className="text-base font-bold text-gray-900 dark:text-white">
-                Cloudflare R2 & Hybrid Storage Config
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Configure your free 10GB Cloudflare R2 bucket for direct PDF streaming.
+
+            <div className="p-4 rounded-2xl bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 text-xs space-y-2">
+              <div className="flex items-center space-x-2">
+                <span className={`w-2.5 h-2.5 rounded-full ${isCloudConnected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                <span className="font-semibold text-gray-800 dark:text-gray-200">
+                  Status: {supabaseStatus}
+                </span>
+              </div>
+              <p className="text-gray-500 dark:text-gray-400 text-[11px] leading-relaxed">
+                If your tables are not yet created in Supabase, click the button below to copy the complete SQL script, then paste it in your Supabase Dashboard under <strong>SQL Editor</strong> and click <strong>Run</strong>.
+              </p>
+
+              <button
+                type="button"
+                onClick={handleCopySqlScript}
+                className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#FF6600] text-white hover:bg-orange-600 transition-colors shadow-sm"
+              >
+                {copiedSql ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                <span>{copiedSql ? 'SQL Script Copied to Clipboard!' : 'Copy Supabase SQL Setup Script'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* CREATOR PROFILE SETTINGS (RAKIB HOSSAIN) */}
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 space-y-6">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-orange-100 text-[#FF6600] dark:bg-orange-950/60 flex items-center justify-center">
+                <GraduationCap className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                  Creator Profile Settings
+                </h3>
+                <p className="text-xs text-gray-500">
+                  Manage your personal photo, batch, biography, and social links.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveCreatorProfile} className="space-y-4 text-xs">
+              {/* Click-to-upload Avatar */}
+              <div className="flex items-center space-x-4 p-4 rounded-2xl bg-orange-50/50 dark:bg-zinc-900/60 border border-orange-200/50 dark:border-zinc-800">
+                <div 
+                  onClick={() => creatorFileRef.current?.click()}
+                  className="w-16 h-16 rounded-2xl overflow-hidden bg-gradient-to-tr from-[#FF6600] to-amber-500 flex items-center justify-center text-white cursor-pointer relative group ring-4 ring-orange-500/20 shadow-md shrink-0"
+                  title="Click to change profile picture"
+                >
+                  <img 
+                    src={editCreator.avatarUrl || "https://github.com/RakibHossain231.png"} 
+                    alt={editCreator.name} 
+                    className="w-full h-full object-cover" 
+                  />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-[10px] font-bold text-white">
+                    <Camera className="w-4 h-4 mb-0.5" />
+                    <span>Change</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1 flex-1">
+                  <h4 className="font-bold text-gray-900 dark:text-white">Click image to upload photo from your computer</h4>
+                  <p className="text-gray-500 text-[11px]">Supports JPG, PNG, WEBP (under 2MB). You can also provide an online image link below.</p>
+                  <input 
+                    type="file" 
+                    ref={creatorFileRef} 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={(e) => handleImageFileUpload(e, (dataUrl) => setEditCreator({ ...editCreator, avatarUrl: dataUrl }))} 
+                  />
+                  <input 
+                    type="url" 
+                    placeholder="Or enter direct Avatar URL..." 
+                    value={editCreator.avatarUrl} 
+                    onChange={(e) => setEditCreator({ ...editCreator, avatarUrl: e.target.value })} 
+                    className="w-full px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-xs" 
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Creator Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editCreator.name}
+                    onChange={(e) => setEditCreator({ ...editCreator, name: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Department</label>
+                  <input
+                    type="text"
+                    value={editCreator.department}
+                    onChange={(e) => setEditCreator({ ...editCreator, department: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Batch</label>
+                  <input
+                    type="text"
+                    value={editCreator.batch}
+                    onChange={(e) => setEditCreator({ ...editCreator, batch: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Biography & Vision</label>
+                <textarea
+                  rows={3}
+                  value={editCreator.bio || ''}
+                  onChange={(e) => setEditCreator({ ...editCreator, bio: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">GitHub Profile URL</label>
+                  <input
+                    type="url"
+                    value={editCreator.githubUrl}
+                    onChange={(e) => setEditCreator({ ...editCreator, githubUrl: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">LinkedIn Profile URL</label>
+                  <input
+                    type="url"
+                    value={editCreator.linkedinUrl}
+                    onChange={(e) => setEditCreator({ ...editCreator, linkedinUrl: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Facebook Profile URL</label>
+                  <input
+                    type="url"
+                    value={editCreator.facebookUrl}
+                    onChange={(e) => setEditCreator({ ...editCreator, facebookUrl: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Yahoo / Public Email</label>
+                  <input
+                    type="email"
+                    value={editCreator.email}
+                    onChange={(e) => setEditCreator({ ...editCreator, email: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              {creatorSaveStatus && (
+                <div className="p-3 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-semibold flex items-center space-x-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{creatorSaveStatus}</span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="px-5 py-2.5 rounded-xl bg-[#FF6600] text-white font-bold text-xs hover:bg-orange-600 transition-colors shadow"
+              >
+                Save Creator Profile
+              </button>
+            </form>
+          </div>
+
+          {/* GOOGLE DRIVE STORAGE CLARIFICATION */}
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 space-y-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 flex items-center justify-center">
+                <HardDrive className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                  Effortless Google Drive Storage Guide
+                </h3>
+                <p className="text-xs text-gray-500">
+                  How to upload notes without dealing with complex Cloudflare R2 configurations.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-xs text-gray-600 dark:text-gray-300 leading-relaxed bg-gray-50 dark:bg-zinc-900 p-4 rounded-2xl border border-gray-200 dark:border-zinc-800">
+              <p><strong>Step 1:</strong> Upload your PDF handnote or exam solve to your personal Google Drive.</p>
+              <p><strong>Step 2:</strong> Right-click the file &rarr; Click <strong>Share</strong> &rarr; Change General Access to <strong>"Anyone with the link can view"</strong>.</p>
+              <p><strong>Step 3:</strong> Click <strong>Copy Link</strong> and paste it into the <strong>"File URL"</strong> field in the Add Note modal!</p>
+              <p className="text-[#FF6600] font-semibold pt-1">
+                ✓ UIU Note Share automatically formats the Google Drive link to render in our embedded zero-download PDF viewer!
               </p>
             </div>
           </div>
 
-          <form onSubmit={handleSaveSettings} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                Cloudflare R2 Public Domain / Custom Subdomain
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. https://pub-abc123xyz.r2.dev or https://notes.uiunoteshare.com"
-                value={r2PublicDomain}
-                onChange={(e) => setR2PublicDomain(e.target.value)}
-                className="w-full px-3.5 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                Cloudflare R2 Bucket Name
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. uiu-notes-archive"
-                value={r2BucketName}
-                onChange={(e) => setR2BucketName(e.target.value)}
-                className="w-full px-3.5 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
-              />
-            </div>
-
-            {settingsSaved && (
-              <div className="p-3 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-semibold flex items-center space-x-2">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Cloudflare R2 configuration saved successfully!</span>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              className="px-5 py-2 rounded-xl bg-[#FF6600] text-white font-bold text-xs hover:bg-orange-600 transition-colors shadow"
-            >
-              Save Configuration
-            </button>
-          </form>
-
-          {/* Security & Admin Password Section */}
-          <div className="pt-6 border-t border-gray-200 dark:border-zinc-800 space-y-4">
+          {/* SECURITY & ADMIN CREDENTIALS */}
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 space-y-4">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 dark:bg-purple-950/60 dark:text-purple-400 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 dark:bg-purple-950/60 flex items-center justify-center">
                 <Lock className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="text-base font-bold text-gray-900 dark:text-white">
-                  Change Admin Master Password
+                  Admin Login & 2FA Credentials
                 </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Manage your verified email, master password, and 6-digit Two-Factor Security PIN (2FA).
+                <p className="text-xs text-gray-500">
+                  Change your admin login email, password, and 6-digit security PIN.
                 </p>
               </div>
             </div>
 
-            <form onSubmit={handleUpdateSecuritySubmit} className="space-y-4">
+            <form onSubmit={handleUpdateSecuritySubmit} className="space-y-4 text-xs">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">
                   Registered Administrator Email *
                 </label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="email"
-                    required
-                    placeholder="e.g. yourname@uiu.ac.bd"
-                    value={editAdminEmail}
-                    onChange={(e) => setEditAdminEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
-                  />
-                </div>
-                <p className="text-[10px] text-gray-400 mt-1">
-                  This email is strictly required along with your password on Step 1 of login.
-                </p>
+                <input
+                  type="email"
+                  required
+                  value={editAdminEmail}
+                  onChange={(e) => setEditAdminEmail(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                  Current Master Password (Required for Authorization) *
+                <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">
+                  Current Master Password (Authorization) *
                 </label>
-                <div className="relative">
-                  <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="password"
-                    required
-                    placeholder="Enter current password to authorize changes"
-                    value={editCurrentPass}
-                    onChange={(e) => setEditCurrentPass(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
-                  />
-                </div>
+                <input
+                  type="password"
+                  required
+                  placeholder="Enter current password to authorize changes"
+                  value={editCurrentPass}
+                  onChange={(e) => setEditCurrentPass(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">
                     New Master Password (Optional)
                   </label>
                   <input
@@ -1056,11 +1388,11 @@ export const AdminDashboard: React.FC = () => {
                     placeholder="Leave blank to keep current"
                     value={editNewPass}
                     onChange={(e) => setEditNewPass(e.target.value)}
-                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                    className="w-full px-3.5 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">
                     Confirm New Password
                   </label>
                   <input
@@ -1068,29 +1400,23 @@ export const AdminDashboard: React.FC = () => {
                     placeholder="Confirm new password"
                     value={editConfirmPass}
                     onChange={(e) => setEditConfirmPass(e.target.value)}
-                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                    className="w-full px-3.5 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">
                   New 6-Digit 2FA Security PIN (Optional)
                 </label>
-                <div className="relative">
-                  <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="password"
-                    maxLength={6}
-                    placeholder="6 digits (e.g. 786221) - leave blank to keep current"
-                    value={editNewPin}
-                    onChange={(e) => setEditNewPin(e.target.value.replace(/\D/g, ''))}
-                    className="w-full pl-10 pr-4 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white font-mono tracking-widest"
-                  />
-                </div>
-                <p className="text-[10px] text-gray-400 mt-1">
-                  This 6-digit PIN is required on Step 2 of login. Even if someone steals your password, they cannot enter without this PIN.
-                </p>
+                <input
+                  type="password"
+                  maxLength={6}
+                  placeholder="6 digits (e.g. 564566)"
+                  value={editNewPin}
+                  onChange={(e) => setEditNewPin(e.target.value.replace(/\D/g, ''))}
+                  className="w-full px-3.5 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white font-mono tracking-widest"
+                />
               </div>
 
               {securityStatus && (
@@ -1104,21 +1430,15 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               )}
 
-              <div className="flex items-center justify-between pt-2">
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-[#FF6600] text-white hover:bg-orange-600 font-bold text-xs transition-colors shadow"
-                >
-                  Save Security Credentials
-                </button>
-
-                <div className="text-[11px] text-gray-400 flex items-center space-x-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Brute-force protection: 5 attempts max</span>
-                </div>
-              </div>
+              <button
+                type="submit"
+                className="px-5 py-2.5 rounded-xl bg-[#FF6600] text-white hover:bg-orange-600 font-bold text-xs transition-colors shadow"
+              >
+                Save Security Credentials
+              </button>
             </form>
           </div>
+
         </div>
       )}
 
@@ -1193,13 +1513,16 @@ export const AdminDashboard: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Theme Color</label>
-                  <input
-                    type="color"
-                    value={editingCourse.color || '#FF6600'}
-                    onChange={(e) => setEditingCourse({ ...editingCourse, color: e.target.value })}
-                    className="w-full h-8 px-1 py-1 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 cursor-pointer"
-                  />
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Credits</label>
+                  <select
+                    value={editingCourse.credit || 3}
+                    onChange={(e) => setEditingCourse({ ...editingCourse, credit: Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  >
+                    <option value={3}>3.0</option>
+                    <option value={1.5}>1.5 (Lab)</option>
+                    <option value={1}>1.0</option>
+                  </select>
                 </div>
               </div>
 
@@ -1238,11 +1561,8 @@ export const AdminDashboard: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#1E1E1E] border border-gray-200 dark:border-zinc-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-5">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-              Create New Course
+              Add New Course
             </h3>
-            <p className="text-xs text-gray-500">
-              When created, all 5 options (Handnotes, Mid/Final Solves, CTs, Assignments, Cheatsheets) are generated automatically.
-            </p>
 
             <form onSubmit={handleCreateCourse} className="space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
@@ -1251,17 +1571,17 @@ export const AdminDashboard: React.FC = () => {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. DS 2101 or CSE 2118"
+                    placeholder="e.g. CSE 2118"
                     value={newCourse.code}
                     onChange={(e) => setNewCourse({ ...newCourse, code: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Short Abbreviation</label>
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Short Abbr</label>
                   <input
                     type="text"
-                    placeholder="e.g. AOOP or ML"
+                    placeholder="e.g. AOOP"
                     value={newCourse.abbr}
                     onChange={(e) => setNewCourse({ ...newCourse, abbr: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
@@ -1420,15 +1740,15 @@ export const AdminDashboard: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Storage Type</label>
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Storage Provider</label>
                   <select
                     value={newResource.storageType}
                     onChange={(e) => setNewResource({ ...newResource, storageType: e.target.value as any })}
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
                   >
+                    <option value="drive">Google Drive (Recommended)</option>
                     <option value="r2">Cloudflare R2</option>
-                    <option value="drive">Google Drive</option>
-                    <option value="direct_url">Direct URL</option>
+                    <option value="direct_url">Direct PDF URL</option>
                   </select>
                 </div>
                 <div>
@@ -1444,15 +1764,20 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">File URL (Cloudflare R2 or Drive link) *</label>
+                <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">
+                  File URL (Google Drive Share Link or R2/PDF URL) *
+                </label>
                 <input
                   type="url"
                   required
-                  placeholder="https://.../file.pdf or https://drive.google.com/file/d/.../view"
+                  placeholder="https://drive.google.com/file/d/.../view or https://..."
                   value={newResource.fileUrl}
                   onChange={(e) => setNewResource({ ...newResource, fileUrl: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
                 />
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Tip: In Google Drive, click Share &rarr; set &quot;Anyone with the link&quot; &rarr; Copy link and paste here.
+                </p>
               </div>
 
               {/* Contributor Attribution */}
@@ -1535,7 +1860,10 @@ export const AdminDashboard: React.FC = () => {
       {contribModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#1E1E1E] border border-gray-200 dark:border-zinc-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 text-xs">
-            <h3 className="text-base font-bold text-gray-900 dark:text-white">Add New Contributor</h3>
+            <div className="flex items-center space-x-2">
+              <UserCheck className="w-5 h-5 text-[#FF6600]" />
+              <h3 className="text-base font-bold text-gray-900 dark:text-white">Add New Contributor</h3>
+            </div>
             
             <form onSubmit={(e) => {
               e.preventDefault();
@@ -1553,6 +1881,44 @@ export const AdminDashboard: React.FC = () => {
               setContribModalOpen(false);
               setNewContrib({ name: '', department: 'CSE', batch: 'Batch 231', avatarUrl: '', socialUrl: '', socialType: 'facebook' });
             }} className="space-y-3">
+
+              {/* Click-to-Upload Avatar Picker */}
+              <div className="flex items-center space-x-3 p-3 rounded-2xl bg-gray-50 dark:bg-zinc-800/60 border border-gray-200 dark:border-zinc-700">
+                <div 
+                  onClick={() => contribFileRef.current?.click()}
+                  className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#FF6600] to-amber-500 flex items-center justify-center text-white cursor-pointer relative group overflow-hidden shrink-0 shadow"
+                  title="Click to select image file from your computer"
+                >
+                  {newContrib.avatarUrl ? (
+                    <img src={newContrib.avatarUrl} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <Camera className="w-6 h-6 text-white/90" />
+                  )}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-[9px] font-bold text-white text-center">
+                    Upload
+                  </div>
+                </div>
+
+                <div className="flex-1">
+                  <span className="font-semibold text-gray-800 dark:text-gray-200 block">Contributor Photo</span>
+                  <span className="text-[10px] text-gray-400 block mb-1">Click circle to upload image from PC</span>
+                  <input 
+                    type="file" 
+                    ref={contribFileRef} 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={(e) => handleImageFileUpload(e, (dataUrl) => setNewContrib({ ...newContrib, avatarUrl: dataUrl }))} 
+                  />
+                  <input
+                    type="url"
+                    placeholder="Or enter Image URL..."
+                    value={newContrib.avatarUrl}
+                    onChange={(e) => setNewContrib({ ...newContrib, avatarUrl: e.target.value })}
+                    className="w-full px-2.5 py-1 text-[11px] rounded-lg bg-white dark:bg-zinc-700 border border-gray-200 dark:border-zinc-600"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block font-semibold mb-1">Contributor Full Name *</label>
                 <input
@@ -1628,6 +1994,138 @@ export const AdminDashboard: React.FC = () => {
                   className="px-4 py-1.5 rounded-xl bg-[#FF6600] text-white font-bold"
                 >
                   Add Contributor
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT CONTRIBUTOR */}
+      {editingContrib && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#1E1E1E] border border-gray-200 dark:border-zinc-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 text-xs">
+            <div className="flex items-center space-x-2">
+              <Edit3 className="w-5 h-5 text-blue-500" />
+              <h3 className="text-base font-bold text-gray-900 dark:text-white">Edit Contributor</h3>
+            </div>
+            
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (!editingContrib.name) return;
+              updateContributor(editingContrib);
+              setEditingContrib(null);
+            }} className="space-y-3">
+
+              {/* Click-to-Upload Avatar Picker */}
+              <div className="flex items-center space-x-3 p-3 rounded-2xl bg-gray-50 dark:bg-zinc-800/60 border border-gray-200 dark:border-zinc-700">
+                <div 
+                  onClick={() => editContribFileRef.current?.click()}
+                  className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#FF6600] to-amber-500 flex items-center justify-center text-white cursor-pointer relative group overflow-hidden shrink-0 shadow"
+                  title="Click to select image file from your computer"
+                >
+                  {editingContrib.avatarUrl ? (
+                    <img src={editingContrib.avatarUrl} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <Camera className="w-6 h-6 text-white/90" />
+                  )}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-[9px] font-bold text-white text-center">
+                    Upload
+                  </div>
+                </div>
+
+                <div className="flex-1">
+                  <span className="font-semibold text-gray-800 dark:text-gray-200 block">Change Photo</span>
+                  <span className="text-[10px] text-gray-400 block mb-1">Click circle to upload image from PC</span>
+                  <input 
+                    type="file" 
+                    ref={editContribFileRef} 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={(e) => handleImageFileUpload(e, (dataUrl) => setEditingContrib({ ...editingContrib, avatarUrl: dataUrl }))} 
+                  />
+                  <input
+                    type="url"
+                    placeholder="Or enter Image URL..."
+                    value={editingContrib.avatarUrl || ''}
+                    onChange={(e) => setEditingContrib({ ...editingContrib, avatarUrl: e.target.value })}
+                    className="w-full px-2.5 py-1 text-[11px] rounded-lg bg-white dark:bg-zinc-700 border border-gray-200 dark:border-zinc-600"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1">Contributor Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={editingContrib.name}
+                  onChange={(e) => setEditingContrib({ ...editingContrib, name: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1">Department</label>
+                  <select
+                    value={editingContrib.department}
+                    onChange={(e) => setEditingContrib({ ...editingContrib, department: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700"
+                  >
+                    {departments.map((d) => (
+                      <option key={d.code} value={d.code}>{d.shortName}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">Batch</label>
+                  <input
+                    type="text"
+                    value={editingContrib.batch || ''}
+                    onChange={(e) => setEditingContrib({ ...editingContrib, batch: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1">Social Profile URL</label>
+                <input
+                  type="url"
+                  value={editingContrib.socialUrl || ''}
+                  onChange={(e) => setEditingContrib({ ...editingContrib, socialUrl: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1">Platform Type</label>
+                <select
+                  value={editingContrib.socialType || 'facebook'}
+                  onChange={(e) => setEditingContrib({ ...editingContrib, socialType: e.target.value as any })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700"
+                >
+                  <option value="facebook">Facebook</option>
+                  <option value="linkedin">LinkedIn</option>
+                  <option value="github">GitHub</option>
+                  <option value="email">Email</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingContrib(null)}
+                  className="px-3 py-1.5 text-gray-500 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 rounded-xl bg-blue-600 text-white font-bold"
+                >
+                  Save Changes
                 </button>
               </div>
             </form>
