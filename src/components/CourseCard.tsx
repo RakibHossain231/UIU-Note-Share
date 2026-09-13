@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Bookmark } from 'lucide-react';
 import { Course } from '../types';
 import { useData } from '../context/DataContext';
+import { getLatestTrimesterForCourse } from '../utils/trimesterHelper';
 
 interface CourseCardProps {
   course: Course;
@@ -13,6 +14,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
 
   const isPinned = pinnedCourseIds.includes(course.id);
   const courseResources = resources.filter(r => r.courseId === course.id);
+  const latestTrimester = getLatestTrimesterForCourse(courseResources);
 
   const handlePinClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -63,12 +65,12 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
 
       {/* Clean Bottom Meta */}
       <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 font-medium pt-1">
-        <span>Updated Till Spring 2026</span>
-        {courseResources.length > 0 && (
-          <span className="text-[11px] text-gray-400 dark:text-zinc-500">
-            {courseResources.length} {courseResources.length === 1 ? 'Resource' : 'Resources'}
-          </span>
-        )}
+        <span>
+          {latestTrimester ? `Updated Till ${latestTrimester}` : 'No Resources Yet'}
+        </span>
+        <span className="text-[11px] text-gray-400 dark:text-zinc-500">
+          {courseResources.length} {courseResources.length === 1 ? 'Resource' : 'Resources'}
+        </span>
       </div>
     </Link>
   );

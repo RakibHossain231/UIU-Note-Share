@@ -41,7 +41,11 @@ export const Footer: React.FC = () => {
             </h4>
             <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
               <li>
-                <Link to="/" className="hover:text-[#FF6600] dark:hover:text-orange-400 transition-colors">
+                <Link 
+                  to="/" 
+                  onClick={() => window.scrollTo({ top: 0, left: 0, behavior: 'smooth' })}
+                  className="hover:text-[#FF6600] dark:hover:text-orange-400 transition-colors"
+                >
                   All Courses
                 </Link>
               </li>

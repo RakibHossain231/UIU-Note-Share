@@ -123,6 +123,7 @@ export const AdminDashboard: React.FC = () => {
     title: string;
     description: string;
     trimesterCode: string;
+    term: string;
     ctNumber: number;
     assignmentNumber: number;
     hasSolution: boolean;
@@ -141,6 +142,7 @@ export const AdminDashboard: React.FC = () => {
     title: '',
     description: '',
     trimesterCode: '241',
+    term: 'mid',
     ctNumber: 1,
     assignmentNumber: 1,
     hasSolution: true,
@@ -377,6 +379,7 @@ export const AdminDashboard: React.FC = () => {
       title: newResource.title.trim(),
       description: newResource.description.trim() || undefined,
       trimesterCode: newResource.trimesterCode || undefined,
+      term: newResource.term || (newResource.type.includes('mid') ? 'mid' : (newResource.type.includes('final') ? 'final' : undefined)),
       storageType: newResource.storageType,
       fileUrl: newResource.fileUrl.trim(),
       hasSolution: newResource.hasSolution,
@@ -393,6 +396,7 @@ export const AdminDashboard: React.FC = () => {
       title: '',
       description: '',
       trimesterCode: '241',
+      term: 'mid',
       ctNumber: 1,
       assignmentNumber: 1,
       hasSolution: true,
@@ -1727,12 +1731,64 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
                 </div>
               </div>
 
+              {/* Handnote Scope Selector */}
+              {newResource.type === 'handnote' && (
+                <div className="p-3.5 bg-orange-50/70 dark:bg-zinc-800/60 rounded-xl border border-orange-200/60 dark:border-zinc-700">
+                  <label className="block text-xs font-bold text-gray-800 dark:text-gray-200 mb-1.5">
+                    Handnote Scope / Coverage *
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    {[
+                      { id: 'mid', label: '📘 Mid Term' },
+                      { id: 'final', label: '📕 Final Term' },
+                      { id: 'topicwise', label: '📙 Topicwise / Chapter' },
+                      { id: 'full', label: '📗 Full Syllabus' }
+                    ].map(scope => (
+                      <button
+                        type="button"
+                        key={scope.id}
+                        onClick={() => {
+                          setNewResource({
+                            ...newResource,
+                            term: scope.id,
+                            title: newResource.title === '' || newResource.title.includes('Term') || newResource.title.includes('Syllabus')
+                              ? (scope.id === 'mid' ? 'Mid Term Handnote' : scope.id === 'final' ? 'Final Term Handnote' : scope.id === 'full' ? 'Full Syllabus Handnote' : '')
+                              : newResource.title
+                          });
+                        }}
+                        className={`px-3 py-2 rounded-xl font-bold border text-center transition-all ${
+                          (newResource.term || 'mid') === scope.id
+                            ? 'bg-[#FF6600] text-white border-[#FF6600] shadow-sm'
+                            : 'bg-white dark:bg-zinc-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-zinc-600 hover:border-orange-400'
+                        }`}
+                      >
+                        {scope.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div>
-                <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Resource Title *</label>
+                <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">
+                  {newResource.type === 'handnote' && newResource.term === 'topicwise'
+                    ? 'Topic / Chapter Title *'
+                    : 'Resource Title *'}
+                </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Chapter 3 Linked List Master Notes"
+                  placeholder={
+                    newResource.type === 'handnote'
+                      ? (newResource.term === 'topicwise' 
+                          ? 'e.g. Chapter 4: War of Liberation 1971'
+                          : newResource.term === 'mid'
+                            ? 'e.g. Mid Term Lecture Notes (Modules 1-3)'
+                            : newResource.term === 'final'
+                              ? 'e.g. Final Exam Complete Notes'
+                              : 'e.g. Full Syllabus Comprehensive Notes')
+                      : 'e.g. Chapter 3 Linked List Master Notes'
+                  }
                   value={newResource.title}
                   onChange={(e) => setNewResource({ ...newResource, title: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
@@ -2207,11 +2263,50 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
                 </div>
               </div>
 
+              {/* Handnote Scope Selector */}
+              {editingResource.type === 'handnote' && (
+                <div className="p-3.5 bg-orange-50/70 dark:bg-zinc-800/60 rounded-xl border border-orange-200/60 dark:border-zinc-700">
+                  <label className="block text-xs font-bold text-gray-800 dark:text-gray-200 mb-1.5">
+                    Handnote Scope / Coverage *
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    {[
+                      { id: 'mid', label: '📘 Mid Term' },
+                      { id: 'final', label: '📕 Final Term' },
+                      { id: 'topicwise', label: '📙 Topicwise / Chapter' },
+                      { id: 'full', label: '📗 Full Syllabus' }
+                    ].map(scope => (
+                      <button
+                        type="button"
+                        key={scope.id}
+                        onClick={() => setEditingResource({ ...editingResource, term: scope.id })}
+                        className={`px-3 py-2 rounded-xl font-bold border text-center transition-all ${
+                          (editingResource.term || 'mid') === scope.id
+                            ? 'bg-[#FF6600] text-white border-[#FF6600] shadow-sm'
+                            : 'bg-white dark:bg-zinc-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-zinc-600 hover:border-orange-400'
+                        }`}
+                      >
+                        {scope.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div>
-                <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Resource Title *</label>
+                <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">
+                  {editingResource.type === 'handnote' && editingResource.term === 'topicwise'
+                    ? 'Topic / Chapter Title *'
+                    : 'Resource Title *'}
+                </label>
                 <input
                   type="text"
                   required
+                  placeholder={
+                    editingResource.type === 'handnote' && editingResource.term === 'topicwise'
+                      ? 'e.g. Chapter 4: War of Liberation 1971'
+                      : 'e.g. Mid Term Lecture Handnote'
+                  }
                   value={editingResource.title}
                   onChange={(e) => setEditingResource({ ...editingResource, title: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"

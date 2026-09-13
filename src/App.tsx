@@ -4,6 +4,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { DataProvider } from './context/DataContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
+import { ScrollToTop } from './components/ScrollToTop';
 import { HomePage } from './pages/HomePage';
 import { CourseDetailPage } from './pages/CourseDetailPage';
 import { ContributorsPage } from './pages/ContributorsPage';
@@ -15,6 +16,7 @@ export const App: React.FC = () => {
     <ThemeProvider>
       <DataProvider>
         <BrowserRouter>
+          <ScrollToTop />
           <div className="flex flex-col min-h-screen">
             <Navbar />
             <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">

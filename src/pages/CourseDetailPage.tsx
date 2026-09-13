@@ -17,7 +17,7 @@ import { BulkDownloadModal } from '../components/BulkDownloadModal';
 import { EmptyState } from '../components/EmptyState';
 import { RequestNoteModal } from '../components/RequestNoteModal';
 import { ZipDownloadService, DownloadProgress } from '../services/zipDownloadService';
-import { formatTrimesterCode } from '../utils/trimesterHelper';
+import { formatTrimesterCode, getLatestTrimesterForCourse, getTrimesterScore, detectNoteScope } from '../utils/trimesterHelper';
 
 type CategoryKey = 
   | 'handnote'
@@ -51,12 +51,21 @@ export const CourseDetailPage: React.FC = () => {
   // Selected Category (null = Level 1 Category Hub, string = Level 2 Trimester Grid)
   const [selectedCategory, setSelectedCategory] = useState<CategoryKey | null>(null);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [noteScopeFilter, setNoteScopeFilter] = useState<'all' | 'mid' | 'final' | 'topicwise'>('all');
 
   // Modals state
   const [previewItem, setPreviewItem] = useState<ResourceItem | null>(null);
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
+
+  // Scroll to top whenever category view changes (level 1 <-> level 2)
+  React.useEffect(() => {
+    setNoteScopeFilter('all');
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+  }, [selectedCategory]);
 
   // Find course
   const course = courses.find(
@@ -71,6 +80,11 @@ export const CourseDetailPage: React.FC = () => {
     if (!course) return [];
     return resources.filter(r => r.courseId === course.id);
   }, [course, resources]);
+
+  // Latest updated trimester across all categories for this course
+  const latestTrimester = useMemo(() => {
+    return getLatestTrimesterForCourse(courseResources);
+  }, [courseResources]);
 
   // Category counts and categorization in strict user-requested order
   const categoryData = useMemo(() => {
@@ -202,19 +216,25 @@ export const CourseDetailPage: React.FC = () => {
     };
   }, [courseResources]);
 
-  // Selected category items with sorting
+  // Selected category items with scope filtering and sorting
   const activeItems = useMemo(() => {
     if (!selectedCategory) return [];
-    const rawItems = [...categoryData[selectedCategory].items];
+    let rawItems = [...categoryData[selectedCategory].items];
+
+    // Sub-filter for handwritten notes (all, mid, final, topicwise)
+    if (selectedCategory === 'handnote' && noteScopeFilter !== 'all') {
+      rawItems = rawItems.filter(item => detectNoteScope(item) === noteScopeFilter);
+    }
+
     return rawItems.sort((a, b) => {
-      const codeA = a.trimesterCode || '';
-      const codeB = b.trimesterCode || '';
-      if (sortOrder === 'newest') {
-        return codeB.localeCompare(codeA);
+      const scoreA = getTrimesterScore(a.trimesterCode || a.title);
+      const scoreB = getTrimesterScore(b.trimesterCode || b.title);
+      if (scoreA !== scoreB) {
+        return sortOrder === 'newest' ? scoreB - scoreA : scoreA - scoreB;
       }
-      return codeA.localeCompare(codeB);
+      return (b.uploadDate || '').localeCompare(a.uploadDate || '');
     });
-  }, [selectedCategory, categoryData, sortOrder]);
+  }, [selectedCategory, categoryData, noteScopeFilter, sortOrder]);
 
   if (!course) {
     return (
@@ -298,6 +318,15 @@ export const CourseDetailPage: React.FC = () => {
             {course.description}
           </p>
         )}
+        <div className="flex flex-wrap items-center gap-3 mt-4 pt-3 border-t border-gray-100 dark:border-zinc-800/80 text-xs text-gray-500 dark:text-gray-400">
+          <span className="font-semibold text-gray-700 dark:text-gray-300">
+            {latestTrimester ? `Updated Till ${latestTrimester}` : 'No Resources Yet'}
+          </span>
+          <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-700" />
+          <span>
+            {courseResources.length} {courseResources.length === 1 ? 'Total Resource' : 'Total Resources'}
+          </span>
+        </div>
       </div>
 
       {/* ========================================================= */}
@@ -398,43 +427,122 @@ export const CourseDetailPage: React.FC = () => {
 
           </div>
 
-          {/* Grid of Trimester Cards (Matches Screenshot 2) */}
+          {/* Sub-Filter Tabs for Handwritten Notes (Mid, Final, Topicwise, All) */}
+          {selectedCategory === 'handnote' && categoryData.handnote.items.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 pt-1 pb-1">
+              <span className="text-xs font-bold text-gray-500 dark:text-gray-400 mr-1">Scope:</span>
+              {[
+                { id: 'all', label: `All Notes (${categoryData.handnote.items.length})` },
+                { id: 'mid', label: '📘 Mid Term' },
+                { id: 'final', label: '📕 Final Term' },
+                { id: 'topicwise', label: '📙 Topicwise / Chapter' }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setNoteScopeFilter(tab.id as any)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    noteScopeFilter === tab.id
+                      ? 'bg-[#FF6600] text-white shadow-sm'
+                      : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 hover:border-orange-400'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Grid of Resource Cards */}
           {activeItems.length === 0 ? (
             <EmptyState
               categoryName={categoryData[selectedCategory].title}
               onRequestClick={() => setRequestModalOpen(true)}
             />
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
               {activeItems.map((item) => {
                 const codeBadge = item.trimesterCode 
                   ? item.trimesterCode 
-                  : (item.ctNumber ? `CT ${item.ctNumber}` : (item.assignmentNumber ? `Assign ${item.assignmentNumber}` : (item.type === 'handnote' ? 'NOTE' : (item.type === 'cheatsheet' ? 'CHEAT' : 'PDF'))));
-                const readableSemester = item.trimesterCode ? formatTrimesterCode(item.trimesterCode) : item.title;
+                  : (item.ctNumber ? `CT ${item.ctNumber}` : (item.assignmentNumber ? `Assign ${item.assignmentNumber}` : (item.type === 'handnote' ? 'NOTE' : 'PDF')));
+                const readableSemester = item.trimesterCode ? formatTrimesterCode(item.trimesterCode) : '';
+                const scope = detectNoteScope(item);
 
                 return (
                   <div
                     key={item.id}
                     onClick={() => setPreviewItem(item)}
                     style={{ borderBottom: `4px solid ${cardColor}` }}
-                    className="group relative flex flex-col items-center justify-center text-center bg-white dark:bg-[#1E1E1E] border border-gray-200/80 dark:border-zinc-800 rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-1 cursor-pointer"
+                    className="group relative flex flex-col justify-between text-left bg-white dark:bg-[#1E1E1E] border border-gray-200/80 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-1 cursor-pointer"
                   >
-                    {/* Oval Trimester Pill (e.g. 261, 253, 252) */}
-                    <div className="px-5 py-1 rounded-full bg-[#FDF0E7] dark:bg-zinc-800 border border-[#F6D3BC] dark:border-zinc-700 text-[#C2671A] dark:text-orange-400 font-extrabold text-sm sm:text-base tracking-wide shadow-inner mb-3">
-                      {codeBadge}
+                    <div>
+                      {/* Top Row: Trimester Pill + Scope Badge */}
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <span className="px-2.5 py-0.5 rounded-full bg-[#FDF0E7] dark:bg-zinc-800 border border-[#F6D3BC] dark:border-zinc-700 text-[#C2671A] dark:text-orange-400 font-extrabold text-xs tracking-wide shadow-inner">
+                          {codeBadge}
+                        </span>
+
+                        {scope === 'mid' && (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-blue-100 text-blue-700 dark:bg-blue-950/70 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800 shadow-sm">
+                            MID TERM
+                          </span>
+                        )}
+                        {scope === 'final' && (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-purple-100 text-purple-700 dark:bg-purple-950/70 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800 shadow-sm">
+                            FINAL TERM
+                          </span>
+                        )}
+                        {scope === 'topicwise' && (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800 shadow-sm">
+                            TOPICWISE
+                          </span>
+                        )}
+                        {scope === 'full' && (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800 shadow-sm">
+                            FULL SYLLABUS
+                          </span>
+                        )}
+                        {item.ctNumber && (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800 shadow-sm">
+                            CT {item.ctNumber}
+                          </span>
+                        )}
+                        {item.assignmentNumber && (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-indigo-100 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800 shadow-sm">
+                            ASSIGNMENT {item.assignmentNumber}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Note Title / Topic Name (Prominent & Clear!) */}
+                      <h4 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white group-hover:text-[#FF6600] transition-colors leading-snug line-clamp-2">
+                        {item.title || (readableSemester ? `${readableSemester} Note` : 'Resource Item')}
+                      </h4>
+
+                      {/* Semester Name & Trimester Tag */}
+                      {readableSemester && readableSemester !== 'General' && (
+                        <p className="text-xs font-semibold text-[#C2671A] dark:text-orange-400 mt-1.5 flex items-center space-x-1">
+                          <span>📅 {readableSemester}</span>
+                        </p>
+                      )}
+
+                      {/* Optional Description */}
+                      {item.description && (
+                        <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">
+                          {item.description}
+                        </p>
+                      )}
                     </div>
 
-                    {/* Semester Name (e.g. Spring 2026, Fall 2025) */}
-                    <h4 className="text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 group-hover:text-[#FF6600] transition-colors">
-                      {readableSemester !== 'General' ? readableSemester : item.title}
-                    </h4>
-
-                    {/* Contributor Credit (Miniature) */}
-                    {item.contributor && (
-                      <span className="mt-2 text-[10px] text-gray-400 dark:text-zinc-500 font-medium">
-                        By {item.contributor.name}
+                    {/* Card Footer: Contributor Credit & Read Action */}
+                    <div className="mt-4 pt-3 border-t border-gray-100 dark:border-zinc-800/80 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                      <span className="truncate max-w-[130px] font-medium">
+                        {item.contributor ? `By ${item.contributor.name}` : 'UIU Community'}
                       </span>
-                    )}
+                      <span className="text-[11px] font-bold text-[#FF6600] group-hover:translate-x-0.5 transition-transform flex items-center space-x-1">
+                        <span>Read PDF</span>
+                        <span>&rarr;</span>
+                      </span>
+                    </div>
                   </div>
                 );
               })}

@@ -35,7 +35,7 @@ export interface ResourceItem {
   title: string;
   description?: string;
   trimesterCode?: string; // e.g. "231", "241", "242"
-  term?: 'mid' | 'final'; // For question solves
+  term?: 'mid' | 'final' | 'topicwise' | 'full' | string; // For question solves or note scope (mid, final, topicwise, full)
   ctNumber?: number; // 1, 2, 3, 4
   assignmentNumber?: number; // 1, 2, 3
   storageType: 'r2' | 'drive' | 'direct_url';
