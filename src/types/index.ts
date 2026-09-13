@@ -1,0 +1,77 @@
+export type Department = 'CSE' | 'DS' | 'EEE' | 'BBA' | 'Civil' | string;
+
+export type ResourceType = 
+  | 'handnote'
+  | 'question_mid'
+  | 'question_final'
+  | 'ct'
+  | 'assignment'
+  | 'cheatsheet';
+
+export interface Contributor {
+  id: string;
+  name: string;
+  department: Department;
+  batch?: string;
+  avatarUrl?: string;
+  socialUrl?: string;
+  socialType?: 'facebook' | 'linkedin' | 'github' | 'email';
+  contributionsCount?: number;
+}
+
+export interface ResourceItem {
+  id: string;
+  courseId: string;
+  department: Department;
+  type: ResourceType;
+  title: string;
+  description?: string;
+  trimesterCode?: string; // e.g. "231", "241", "242"
+  term?: 'mid' | 'final'; // For question solves
+  ctNumber?: number; // 1, 2, 3, 4
+  assignmentNumber?: number; // 1, 2, 3
+  storageType: 'r2' | 'drive' | 'direct_url';
+  fileUrl: string; // Cloudflare R2 URL or Google Drive URL
+  hasSolution?: boolean;
+  solutionUrl?: string;
+  fileSize?: string;
+  uploadDate: string;
+  contributor?: Contributor;
+}
+
+export interface Course {
+  id: string; // e.g. "cse-2118"
+  code: string; // e.g. "CSE 2118"
+  title: string; // e.g. "Advanced Object Oriented Programming"
+  abbr?: string; // e.g. "AOOP"
+  department: Department;
+  trimester: number; // 1 to 12
+  color: string; // hex code
+  description?: string;
+  credit?: number;
+}
+
+export interface NoteRequest {
+  id: string;
+  courseCode: string;
+  courseTitle: string;
+  resourceType: ResourceType;
+  requestedBy: string;
+  contactInfo?: string;
+  notes?: string;
+  createdAt: string;
+  status: 'pending' | 'fulfilled';
+}
+
+export interface CloudflareR2Config {
+  accountId: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  bucketName: string;
+  publicDomain: string; // e.g. https://pub-xxx.r2.dev or custom domain
+}
+
+export interface SupabaseConfig {
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+}
