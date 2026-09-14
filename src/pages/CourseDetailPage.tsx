@@ -17,7 +17,7 @@ import { BulkDownloadModal } from '../components/BulkDownloadModal';
 import { EmptyState } from '../components/EmptyState';
 import { RequestNoteModal } from '../components/RequestNoteModal';
 import { ZipDownloadService, DownloadProgress } from '../services/zipDownloadService';
-import { formatTrimesterCode, getLatestTrimesterForCourse, getTrimesterScore, detectNoteScope } from '../utils/trimesterHelper';
+import { formatTrimesterCode, getLatestTrimesterForCourse, getTrimesterScore } from '../utils/trimesterHelper';
 
 type CategoryKey = 
   | 'handnote'
@@ -214,9 +214,7 @@ export const CourseDetailPage: React.FC = () => {
     let rawItems = [...categoryData[selectedCategory].items];
 
     if (subFilter !== 'all') {
-      if (selectedCategory === 'handnote') {
-        rawItems = rawItems.filter(item => detectNoteScope(item) === subFilter);
-      } else if (subFilter === 'question') {
+      if (subFilter === 'question') {
         rawItems = rawItems.filter(item => isQuestionItem(item));
       } else if (subFilter === 'solve') {
         rawItems = rawItems.filter(item => isSolutionItem(item));
@@ -436,8 +434,8 @@ export const CourseDetailPage: React.FC = () => {
 
           </div>
 
-          {/* Sub-Filter Tabs for Categories */}
-          {selectedCategory && categoryData[selectedCategory].items.length > 0 && (
+          {/* Sub-Filter Tabs for Categories (Hidden for handnote and cheatsheet) */}
+          {selectedCategory && selectedCategory !== 'handnote' && selectedCategory !== 'cheatsheet' && categoryData[selectedCategory].items.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 pt-1 pb-1">
               <span className="text-xs font-bold text-gray-500 dark:text-gray-400 mr-1">Filter:</span>
 
@@ -451,29 +449,6 @@ export const CourseDetailPage: React.FC = () => {
               >
                 All ({categoryData[selectedCategory].items.length})
               </button>
-
-              {/* Handnote specific tabs */}
-              {selectedCategory === 'handnote' && (
-                <>
-                  {[
-                    { id: 'mid', label: '📘 Mid Term' },
-                    { id: 'final', label: '📕 Final Term' },
-                    { id: 'topicwise', label: '📙 Topicwise / Chapter' }
-                  ].map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setSubFilter(tab.id)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                        subFilter === tab.id
-                          ? 'bg-[#FF6600] text-white shadow-sm'
-                          : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 hover:border-orange-400'
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </>
-              )}
 
               {/* CT specific tabs: CT 1, 2, 3, 4 */}
               {selectedCategory === 'ct' && (
@@ -551,11 +526,7 @@ export const CourseDetailPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
               {activeItems.map((item) => {
                 const isSol = isSolutionItem(item);
-                const codeBadge = item.trimesterCode 
-                  ? item.trimesterCode 
-                  : (item.ctNumber ? `CT ${item.ctNumber}` : (item.assignmentNumber ? `Assign ${item.assignmentNumber}` : (item.type === 'handnote' ? 'NOTE' : 'PDF')));
                 const readableSemester = item.trimesterCode ? formatTrimesterCode(item.trimesterCode) : '';
-                const scope = detectNoteScope(item);
 
                 return (
                   <div
@@ -565,56 +536,25 @@ export const CourseDetailPage: React.FC = () => {
                     className="group relative flex flex-col justify-between text-left bg-white dark:bg-[#1E1E1E] border border-gray-200/80 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-1 cursor-pointer"
                   >
                     <div>
-                      {/* Top Row: Trimester Pill + Question/Solution or Scope Badge */}
-                      <div className="flex items-center justify-between gap-2 mb-3">
-                        <span className="px-2.5 py-0.5 rounded-full bg-[#FDF0E7] dark:bg-zinc-800 border border-[#F6D3BC] dark:border-zinc-700 text-[#C2671A] dark:text-orange-400 font-extrabold text-xs tracking-wide shadow-inner">
-                          {codeBadge}
-                        </span>
-
-                        <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                          {/* CT Number Badge */}
-                          {item.ctNumber && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800 shadow-sm">
-                              CT {item.ctNumber}
+                      {/* Top Row Badges (Only shown for non-handnote categories with badges) */}
+                      {selectedCategory !== 'handnote' && (
+                        <div className="flex items-center justify-between gap-2 mb-3">
+                          {/* CT or Assignment Badge */}
+                          {item.ctNumber ? (
+                            <span className="px-2.5 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800 shadow-sm">
+                              🎯 CT {item.ctNumber}
                             </span>
-                          )}
-                          
-                          {/* Assignment Number Badge */}
-                          {item.assignmentNumber && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-indigo-100 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800 shadow-sm">
-                              ASSIGN {item.assignmentNumber}
+                          ) : item.assignmentNumber ? (
+                            <span className="px-2.5 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-indigo-100 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800 shadow-sm">
+                              📋 ASSIGN {item.assignmentNumber}
                             </span>
+                          ) : (
+                            <span />
                           )}
 
-                          {/* Handnote Scope Badge */}
-                          {selectedCategory === 'handnote' && (
-                            <>
-                              {scope === 'mid' && (
-                                <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-blue-100 text-blue-700 dark:bg-blue-950/70 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800 shadow-sm">
-                                  MID TERM
-                                </span>
-                              )}
-                              {scope === 'final' && (
-                                <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-purple-100 text-purple-700 dark:bg-purple-950/70 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800 shadow-sm">
-                                  FINAL TERM
-                                </span>
-                              )}
-                              {scope === 'topicwise' && (
-                                <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800 shadow-sm">
-                                  TOPICWISE
-                                </span>
-                              )}
-                              {scope === 'full' && (
-                                <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800 shadow-sm">
-                                  FULL SYLLABUS
-                                </span>
-                              )}
-                            </>
-                          )}
-
-                          {/* Question vs Solution Badge (for Mid, Final, CT, Assignment) */}
-                          {selectedCategory !== 'handnote' && (
-                            isSol ? (
+                          {/* Question vs Solution Badge */}
+                          <div className="flex items-center gap-1.5 justify-end">
+                            {isSol ? (
                               <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800 shadow-sm flex items-center space-x-1">
                                 <span>💡 SOLVE</span>
                               </span>
@@ -622,10 +562,10 @@ export const CourseDetailPage: React.FC = () => {
                               <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-sky-100 text-sky-700 dark:bg-sky-950/70 dark:text-sky-300 border border-sky-200/60 dark:border-sky-800 shadow-sm flex items-center space-x-1">
                                 <span>❓ QUESTION</span>
                               </span>
-                            )
-                          )}
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       {/* Note Title / Topic Name (Prominent & Clear!) */}
                       <h4 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white group-hover:text-[#FF6600] transition-colors leading-snug line-clamp-2">
