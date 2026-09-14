@@ -343,7 +343,7 @@ export const SupabaseService = {
 
       if (!profileErr && profileData?.bio) {
         const parsed = parseInt(profileData.bio, 10);
-        if (!isNaN(parsed) && parsed > 0) {
+        if (!isNaN(parsed) && parsed >= 0) {
           StorageService.setVisitorCount(parsed);
           return parsed;
         }
@@ -356,7 +356,7 @@ export const SupabaseService = {
         .eq('key', 'total_visitors')
         .maybeSingle();
 
-      if (!error && data && !isNaN(Number(data.value))) {
+      if (!error && data && !isNaN(Number(data.value)) && Number(data.value) >= 0) {
         const count = Number(data.value);
         StorageService.setVisitorCount(count);
         return count;

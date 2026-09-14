@@ -339,9 +339,9 @@ export const StorageService = {
   // Visitor Counter
   getVisitorCount(): number {
     const raw = localStorage.getItem(STORAGE_KEYS.VISITORS);
-    if (!raw) return 1420; // Realistic starting baseline
+    if (!raw) return 0;
     const val = parseInt(raw, 10);
-    return isNaN(val) ? 1420 : val;
+    return isNaN(val) ? 0 : val;
   },
 
   setVisitorCount(count: number): void {

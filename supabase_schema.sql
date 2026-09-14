@@ -141,7 +141,7 @@ create table if not exists public.site_stats (
 
 -- Insert Initial Visitor Stat
 insert into public.site_stats (key, value)
-values ('total_visitors', 1420)
+values ('total_visitors', 0)
 on conflict (key) do nothing;
 
 alter table public.site_stats enable row level security;
