@@ -14,7 +14,8 @@ const STORAGE_KEYS = {
   SUPABASE_CONFIG: 'uiu_supabase_config_v1',
   ADMIN_AUTH: 'uiu_admin_auth_v1',
   ADMIN_CREDENTIALS: 'uiu_admin_credentials_v3',
-  CREATOR_PROFILE: 'uiu_creator_profile_v1'
+  CREATOR_PROFILE: 'uiu_creator_profile_v1',
+  VISITORS: 'uiu_total_visitors_v1'
 };
 
 export interface CreatorProfileData {
@@ -333,5 +334,24 @@ export const StorageService = {
     const creds = this.getAdminCredentials();
     creds.password = newPassword;
     this.saveAdminCredentials(creds);
+  },
+
+  // Visitor Counter
+  getVisitorCount(): number {
+    const raw = localStorage.getItem(STORAGE_KEYS.VISITORS);
+    if (!raw) return 1420; // Realistic starting baseline
+    const val = parseInt(raw, 10);
+    return isNaN(val) ? 1420 : val;
+  },
+
+  setVisitorCount(count: number): void {
+    localStorage.setItem(STORAGE_KEYS.VISITORS, count.toString());
+  },
+
+  incrementVisitorCount(): number {
+    const cur = this.getVisitorCount();
+    const next = cur + 1;
+    this.setVisitorCount(next);
+    return next;
   }
 };

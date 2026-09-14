@@ -1,4 +1,4 @@
-﻿-- ============================================================
+-- ============================================================
 -- UIU NOTE SHARE - SUPABASE DATABASE SCHEMA
 -- Run this in your Supabase Dashboard: SQL Editor -> New Query -> Run
 -- ============================================================
@@ -131,3 +131,21 @@ create policy "Enable all for note_requests" on public.note_requests for all usi
 
 drop policy if exists "Enable all for creator_profile" on public.creator_profile;
 create policy "Enable all for creator_profile" on public.creator_profile for all using (true) with check (true);
+
+-- 6. SITE STATS TABLE (Visitors, Counter)
+create table if not exists public.site_stats (
+  key text primary key,
+  value bigint not null default 0,
+  updated_at timestamp with time zone default now()
+);
+
+-- Insert Initial Visitor Stat
+insert into public.site_stats (key, value)
+values ('total_visitors', 1420)
+on conflict (key) do nothing;
+
+alter table public.site_stats enable row level security;
+
+drop policy if exists "Enable all for site_stats" on public.site_stats;
+create policy "Enable all for site_stats" on public.site_stats for all using (true) with check (true);
+

@@ -16,7 +16,7 @@ import { CourseCard } from '../components/CourseCard';
 import { DepartmentFilter } from '../components/DepartmentFilter';
 
 export const HomePage: React.FC = () => {
-  const { courses, resources, contributors, selectedDepartment, searchQuery, setSearchQuery, pinnedCourseIds } = useData();
+  const { courses, resources, contributors, visitorCount, selectedDepartment, searchQuery, setSearchQuery, pinnedCourseIds } = useData();
   const [selectedTrimester, setSelectedTrimester] = useState<number | 'all'>('all');
 
   // Filter courses by department, trimester, and search query
@@ -78,7 +78,7 @@ export const HomePage: React.FC = () => {
           </p>
 
           {/* Quick Metrics (Full Width) */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 pt-4 border-t border-zinc-800/80 w-full text-center">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 sm:gap-6 pt-4 border-t border-zinc-800/80 w-full text-center">
             <div>
               <div className="text-xl sm:text-2xl font-black text-white">{courses.length}+</div>
               <div className="text-xs text-zinc-400 font-medium mt-0.5">Courses Archived</div>
@@ -86,6 +86,10 @@ export const HomePage: React.FC = () => {
             <div>
               <div className="text-xl sm:text-2xl font-black text-[#FF6600]">{resources.length}+</div>
               <div className="text-xs text-zinc-400 font-medium mt-0.5">Verified Solves & Notes</div>
+            </div>
+            <div>
+              <div className="text-xl sm:text-2xl font-black text-sky-400">{visitorCount.toLocaleString()}+</div>
+              <div className="text-xs text-zinc-400 font-medium mt-0.5">Total Visitors</div>
             </div>
             <div>
               <div className="text-xl sm:text-2xl font-black text-white">{contributors.length}</div>

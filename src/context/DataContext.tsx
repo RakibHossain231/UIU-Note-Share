@@ -55,6 +55,7 @@ interface DataContextType {
   getLockStatus: () => { locked: boolean; remainingSeconds: number };
   logoutAdmin: () => void;
   changeAdminPassword: (oldPass: string, newPass: string) => boolean;
+  visitorCount: number;
 }
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -72,6 +73,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(false);
   const [supabaseStatus, setSupabaseStatus] = useState<string>('Checking connection...');
+  const [visitorCount, setVisitorCount] = useState<number>(() => StorageService.getVisitorCount());
 
   // Initialize local data immediately for instant rendering
   useEffect(() => {
@@ -83,6 +85,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setNoteRequests(StorageService.getNoteRequests());
     setIsAdmin(StorageService.isAdminLoggedIn());
     setCreatorProfile(StorageService.getCreatorProfile());
+
+    // Record visit and sync visitor count
+    SupabaseService.recordVisitor().then((count) => {
+      if (count > 0) setVisitorCount(count);
+    });
   }, []);
 
   // Sync with Supabase Cloud Database
@@ -394,6 +401,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         getLockStatus,
         logoutAdmin,
         changeAdminPassword,
+        visitorCount,
       }}
     >
       {children}

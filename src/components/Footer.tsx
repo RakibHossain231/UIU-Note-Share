@@ -1,9 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Heart, Mail, ShieldAlert, Sparkles, Lock } from 'lucide-react';
+import { BookOpen, Heart, Mail, ShieldAlert, Sparkles, Lock, Users } from 'lucide-react';
 import { FacebookIcon, LinkedinIcon, GithubIcon } from './SocialIcons';
+import { useData } from '../context/DataContext';
 
 export const Footer: React.FC = () => {
+  const { visitorCount } = useData();
   return (
     <footer className="border-t border-gray-200 dark:border-zinc-800 bg-white dark:bg-[#151515] transition-colors mt-12 sm:mt-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -22,10 +24,15 @@ export const Footer: React.FC = () => {
             <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 max-w-md leading-relaxed">
               A community-driven open academic archive dedicated to United International University (UIU) students. Share, discover, and download handnotes, CT questions, semester solves, and study guides for CSE, Data Science, and all departments.
             </p>
-            <div className="flex items-center space-x-2.5 text-xs text-gray-500 dark:text-gray-400 pt-1">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400 pt-1">
               <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full bg-orange-50 text-[#FF6600] dark:bg-orange-950/40 dark:text-orange-400 font-semibold text-[11px]">
                 <Sparkles className="w-3 h-3 mr-1" />
                 100% Free & Open
+              </span>
+              <span>•</span>
+              <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-medium text-[11px]">
+                <Users className="w-3 h-3 mr-1 text-sky-500" />
+                {visitorCount.toLocaleString()}+ Visits
               </span>
               <span>•</span>
               <span>Zero Ads</span>

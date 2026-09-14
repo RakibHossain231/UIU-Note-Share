@@ -1,21 +1,31 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { DataProvider } from './context/DataContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { ScrollToTop } from './components/ScrollToTop';
+import { analytics } from './services/analyticsService';
 import { HomePage } from './pages/HomePage';
 import { CourseDetailPage } from './pages/CourseDetailPage';
 import { ContributorsPage } from './pages/ContributorsPage';
 import { AboutPage } from './pages/AboutPage';
 import { AdminDashboard } from './pages/AdminDashboard';
 
+const AnalyticsTracker: React.FC = () => {
+  const location = useLocation();
+  useEffect(() => {
+    analytics.trackPageView(location.pathname + location.search);
+  }, [location]);
+  return null;
+};
+
 export const App: React.FC = () => {
   return (
     <ThemeProvider>
       <DataProvider>
         <BrowserRouter>
+          <AnalyticsTracker />
           <ScrollToTop />
           <div className="flex flex-col min-h-screen">
             <Navbar />

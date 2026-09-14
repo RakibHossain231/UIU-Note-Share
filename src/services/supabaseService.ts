@@ -1,4 +1,5 @@
-﻿import { supabase, isSupabaseConfigured } from './supabaseClient';
+import { supabase, isSupabaseConfigured } from './supabaseClient';
+import { StorageService } from './storageService';
 import { Course, ResourceItem, Contributor, NoteRequest } from '../types';
 
 export interface CreatorProfile {
@@ -325,5 +326,58 @@ export const SupabaseService = {
     } catch {
       return false;
     }
+  },
+
+  // VISITOR TRACKING
+  async getVisitorCount(): Promise<number> {
+    const local = StorageService.getVisitorCount();
+    if (!supabase || !isSupabaseConfigured()) return local;
+    try {
+      const { data, error } = await supabase
+        .from('site_stats')
+        .select('value')
+        .eq('key', 'total_visitors')
+        .maybeSingle();
+
+      if (error || !data) return local;
+      const count = Number(data.value);
+      if (!isNaN(count) && count > 0) {
+        StorageService.setVisitorCount(count);
+        return count;
+      }
+      return local;
+    } catch {
+      return local;
+    }
+  },
+
+  async recordVisitor(): Promise<number> {
+    const isTracked = typeof window !== 'undefined' ? sessionStorage.getItem('uiu_session_tracked') : null;
+    if (isTracked) {
+      return this.getVisitorCount();
+    }
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('uiu_session_tracked', '1');
+    }
+
+    const currentCount = await this.getVisitorCount();
+    const nextCount = currentCount + 1;
+    StorageService.setVisitorCount(nextCount);
+
+    if (supabase && isSupabaseConfigured()) {
+      try {
+        await supabase
+          .from('site_stats')
+          .upsert({
+            key: 'total_visitors',
+            value: nextCount,
+            updated_at: new Date().toISOString()
+          });
+      } catch (err) {
+        console.warn('Supabase visitor count increment deferred:', err);
+      }
+    }
+
+    return nextCount;
   }
 };

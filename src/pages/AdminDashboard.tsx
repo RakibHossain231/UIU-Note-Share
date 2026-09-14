@@ -81,7 +81,8 @@ export const AdminDashboard: React.FC = () => {
     supabaseStatus,
     syncWithCloud,
     departments, 
-    noteRequests 
+    noteRequests,
+    visitorCount
   } = useData();
 
   // 2-Step Login form state
@@ -788,7 +789,7 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
       </div>
 
       {/* Metrics Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-2xl p-4">
           <span className="text-xs text-gray-500 font-medium">Total Courses</span>
           <div className="text-2xl font-black text-gray-900 dark:text-white mt-1">{courses.length}</div>
@@ -796,6 +797,10 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
         <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-2xl p-4">
           <span className="text-xs text-gray-500 font-medium">Total Notes & Solves</span>
           <div className="text-2xl font-black text-[#FF6600] mt-1">{resources.length}</div>
+        </div>
+        <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-2xl p-4">
+          <span className="text-xs text-gray-500 font-medium">Total Visitors</span>
+          <div className="text-2xl font-black text-emerald-500 mt-1">{visitorCount.toLocaleString()}</div>
         </div>
         <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-2xl p-4">
           <span className="text-xs text-gray-500 font-medium">Contributors</span>
