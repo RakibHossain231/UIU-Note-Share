@@ -26,12 +26,12 @@ function getDownloadUrls(url: string): string[] {
 
     if (fileId) {
       return [
-        // Primary: CORS-enabled direct download endpoint from Google Drive
+        // Primary: Same-origin proxy endpoint (Vite dev middleware & Vercel API) - 100% immune to browser CORS
+        `/api/drive-download?id=${fileId}`,
+        // Fallback 1: Direct endpoint
         `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`,
-        // Fallback 1
-        `https://drive.google.com/uc?export=download&id=${fileId}&confirm=t`,
         // Fallback 2
-        `https://docs.google.com/uc?export=download&id=${fileId}`
+        `https://drive.google.com/uc?export=download&id=${fileId}&confirm=t`
       ];
     }
   }
