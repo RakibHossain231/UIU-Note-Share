@@ -40,14 +40,42 @@ export const isSolutionItem = (item: ResourceItem): boolean => {
   if (item.type === 'mid_solve' || item.type === 'final_solve' || item.type === 'ct_solve' || item.type === 'assignment_solve') {
     return true;
   }
-  if (item.hasSolution) return true;
+  if (
+    item.type === 'question_mid' || 
+    item.type === 'mid_question' || 
+    item.type === 'question_final' || 
+    item.type === 'final_question' || 
+    item.type === 'ct_question' || 
+    item.type === 'assignment_question' ||
+    item.type === 'handnote' ||
+    item.type === 'cheatsheet'
+  ) {
+    return false;
+  }
   const title = (item.title || '').toLowerCase();
   return title.includes('solve') || title.includes('solution') || title.includes('answer') || title.includes('soln');
 };
 
 export const isQuestionItem = (item: ResourceItem): boolean => {
-  if (item.type === 'question_mid' || item.type === 'mid_question' || item.type === 'question_final' || item.type === 'final_question' || item.type === 'ct_question' || item.type === 'assignment_question') {
+  if (
+    item.type === 'question_mid' || 
+    item.type === 'mid_question' || 
+    item.type === 'question_final' || 
+    item.type === 'final_question' || 
+    item.type === 'ct_question' || 
+    item.type === 'assignment_question'
+  ) {
     return true;
+  }
+  if (
+    item.type === 'mid_solve' || 
+    item.type === 'final_solve' || 
+    item.type === 'ct_solve' || 
+    item.type === 'assignment_solve' ||
+    item.type === 'handnote' ||
+    item.type === 'cheatsheet'
+  ) {
+    return false;
   }
   const title = (item.title || '').toLowerCase();
   if (title.includes('question') || title.includes('ques') || title.includes('qp')) {
@@ -98,46 +126,38 @@ export const CourseDetailPage: React.FC = () => {
 
   // Unified 5 Primary Categories (+ Cheat Sheets if available)
   const categoryData = useMemo(() => {
-    // 1. Handnotes
+    // 1. Handnotes - STRICTLY only handnotes
     const handnotes = courseResources.filter(r => r.type === 'handnote');
 
-    // 2. Mid Questions & Solves (combined)
+    // 2. Mid Questions & Solves (combined) - STRICTLY only mid types
     const midItems = courseResources.filter(r => 
       r.type === 'question_mid' || 
       r.type === 'mid_question' || 
-      r.type === 'mid_solve' ||
-      r.term === 'mid' ||
-      (r.title && /\bmid\b/i.test(r.title))
+      r.type === 'mid_solve'
     );
 
-    // 3. Final Questions & Solves (combined)
+    // 3. Final Questions & Solves (combined) - STRICTLY only final types
     const finalItems = courseResources.filter(r => 
       r.type === 'question_final' || 
       r.type === 'final_question' || 
-      r.type === 'final_solve' ||
-      r.term === 'final' ||
-      (r.title && /\bfinal\b/i.test(r.title))
+      r.type === 'final_solve'
     );
 
-    // 4. CT Questions & Solves (combined)
+    // 4. CT Questions & Solves (combined) - STRICTLY only CT types
     const ctItems = courseResources.filter(r => 
       r.type === 'ct' || 
       r.type === 'ct_question' || 
-      r.type === 'ct_solve' ||
-      (r.ctNumber !== undefined && r.ctNumber !== null) ||
-      (r.title && /\bct\b|\bclass test\b/i.test(r.title))
+      r.type === 'ct_solve'
     );
 
-    // 5. Assignments & Solves (combined)
+    // 5. Assignments & Solves (combined) - STRICTLY only assignment types
     const assignmentItems = courseResources.filter(r => 
       r.type === 'assignment' || 
       r.type === 'assignment_question' || 
-      r.type === 'assignment_solve' ||
-      (r.assignmentNumber !== undefined && r.assignmentNumber !== null) ||
-      (r.title && /\bassign/i.test(r.title))
+      r.type === 'assignment_solve'
     );
 
-    // 6. Cheat Sheets (optional)
+    // 6. Cheat Sheets (optional) - STRICTLY only cheatsheet
     const cheatsheets = courseResources.filter(r => r.type === 'cheatsheet');
 
     return {

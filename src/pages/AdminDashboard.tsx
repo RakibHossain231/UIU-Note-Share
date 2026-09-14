@@ -155,10 +155,10 @@ export const AdminDashboard: React.FC = () => {
     title: '',
     description: '',
     trimesterCode: '',
-    term: 'all',
+    term: '',
     ctNumber: 1,
     assignmentNumber: 1,
-    hasSolution: true,
+    hasSolution: false,
     storageType: 'drive',
     fileUrl: '',
     fileSize: '',
@@ -390,6 +390,9 @@ export const AdminDashboard: React.FC = () => {
 
     const course = courses.find(c => c.id === targetCourseId);
 
+    const isCt = newResource.type === 'ct' || newResource.type === 'ct_question' || newResource.type === 'ct_solve';
+    const isAssign = newResource.type === 'assignment' || newResource.type === 'assignment_question' || newResource.type === 'assignment_solve';
+
     const item: ResourceItem = {
       id: 'res-' + Date.now(),
       courseId: targetCourseId,
@@ -398,10 +401,12 @@ export const AdminDashboard: React.FC = () => {
       title: newResource.title.trim(),
       description: newResource.description.trim() || undefined,
       trimesterCode: newResource.trimesterCode.trim() || undefined,
-      term: newResource.term || (newResource.type.includes('mid') ? 'mid' : (newResource.type.includes('final') ? 'final' : undefined)),
+      term: newResource.type.includes('mid') ? 'mid' : (newResource.type.includes('final') ? 'final' : undefined),
+      ctNumber: isCt ? newResource.ctNumber : undefined,
+      assignmentNumber: isAssign ? newResource.assignmentNumber : undefined,
       storageType: newResource.storageType,
       fileUrl: newResource.fileUrl.trim(),
-      hasSolution: newResource.hasSolution,
+      hasSolution: newResource.type.includes('solve') || Boolean(newResource.hasSolution),
       fileSize: newResource.fileSize.trim() || undefined,
       uploadDate: new Date().toISOString().split('T')[0],
       contributor: targetContributor
@@ -415,10 +420,10 @@ export const AdminDashboard: React.FC = () => {
       title: '',
       description: '',
       trimesterCode: '',
-      term: 'all',
+      term: '',
       ctNumber: 1,
       assignmentNumber: 1,
-      hasSolution: true,
+      hasSolution: false,
       storageType: 'drive',
       fileUrl: '',
       fileSize: '',
