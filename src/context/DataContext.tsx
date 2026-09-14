@@ -86,10 +86,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAdmin(StorageService.isAdminLoggedIn());
     setCreatorProfile(StorageService.getCreatorProfile());
 
-    // Record visit and sync visitor count
+    // Record visit and sync visitor count immediately
     SupabaseService.recordVisitor().then((count) => {
       if (count > 0) setVisitorCount(count);
     });
+
+    // Real-time polling: sync latest visitor count across all users every 8 seconds
+    const pollTimer = setInterval(() => {
+      SupabaseService.getVisitorCount().then((count) => {
+        if (count > 0) setVisitorCount(count);
+      });
+    }, 8000);
+
+    return () => clearInterval(pollTimer);
   }, []);
 
   // Sync with Supabase Cloud Database

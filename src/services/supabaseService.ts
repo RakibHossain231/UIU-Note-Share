@@ -369,19 +369,6 @@ export const SupabaseService = {
   },
 
   async recordVisitor(): Promise<number> {
-    // 30-second debounce per browser tab to avoid accidental double-clicks while testing
-    const lastVisit = typeof window !== 'undefined' ? sessionStorage.getItem('uiu_last_visit_time') : null;
-    const now = Date.now();
-
-    if (lastVisit && now - Number(lastVisit) < 30 * 1000) {
-      // Return fresh live count from cloud without incrementing within 30s
-      return this.getVisitorCount();
-    }
-
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('uiu_last_visit_time', now.toString());
-    }
-
     try {
       // Fetch latest live count from Supabase
       const currentCount = await this.getVisitorCount();
@@ -403,7 +390,7 @@ export const SupabaseService = {
             updated_at: new Date().toISOString()
           });
 
-        // 2. Also try site_stats table
+        // 2. Also try site_stats table if created
         try {
           await supabase
             .from('site_stats')
