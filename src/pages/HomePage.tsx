@@ -56,43 +56,43 @@ export const HomePage: React.FC = () => {
     <div className="space-y-10 pb-16">
       
       {/* Hero Banner */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 via-zinc-950 to-black text-white p-6 sm:p-8 lg:p-10 border border-zinc-800 shadow-2xl">
+      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-zinc-900 via-zinc-950 to-black text-white p-5 sm:p-6 lg:py-6 lg:px-8 border border-zinc-800 shadow-2xl">
         <div className="absolute top-0 right-0 -mt-12 -mr-12 w-96 h-96 bg-[#FF6600]/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 -mb-12 -ml-12 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 space-y-5">
+        <div className="relative z-10 space-y-4">
           {/* Badge */}
-          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-semibold">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-semibold">
             <Sparkles className="w-3.5 h-3.5 text-[#FF6600]" />
             <span>United International University (UIU) Open Knowledge Repository</span>
           </div>
 
           {/* Headline */}
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white leading-tight">
             All Your UIU <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF6600] to-amber-400">Handnotes & Solves</span> in One Place.
           </h1>
 
           {/* Description */}
-          <p className="text-sm sm:text-base text-zinc-300 max-w-3xl leading-relaxed">
+          <p className="text-xs sm:text-sm text-zinc-300 max-w-4xl leading-relaxed">
             Free, fast, and community-driven archive of handwritten lecture notes, midterm & final question solves, class tests, and assignments for CSE, Data Science, and all departments.
           </p>
 
-          {/* Quick Metrics */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-5 border-t border-zinc-800/80 max-w-4xl">
+          {/* Quick Metrics (Full Width) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 pt-4 border-t border-zinc-800/80 w-full">
             <div>
-              <div className="text-2xl sm:text-3xl font-black text-white">{courses.length}+</div>
+              <div className="text-xl sm:text-2xl font-black text-white">{courses.length}+</div>
               <div className="text-xs text-zinc-400 font-medium mt-0.5">Courses Archived</div>
             </div>
             <div>
-              <div className="text-2xl sm:text-3xl font-black text-[#FF6600]">{resources.length}+</div>
+              <div className="text-xl sm:text-2xl font-black text-[#FF6600]">{resources.length}+</div>
               <div className="text-xs text-zinc-400 font-medium mt-0.5">Verified Solves & Notes</div>
             </div>
             <div>
-              <div className="text-2xl sm:text-3xl font-black text-white">{contributors.length}</div>
+              <div className="text-xl sm:text-2xl font-black text-white">{contributors.length}</div>
               <div className="text-xs text-zinc-400 font-medium mt-0.5">Active Contributors</div>
             </div>
             <div>
-              <div className="text-2xl sm:text-3xl font-black text-emerald-400">100%</div>
+              <div className="text-xl sm:text-2xl font-black text-emerald-400">100%</div>
               <div className="text-xs text-zinc-400 font-medium mt-0.5">Free Forever</div>
             </div>
           </div>
