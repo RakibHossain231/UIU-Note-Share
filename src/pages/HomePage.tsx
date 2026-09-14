@@ -60,9 +60,9 @@ export const HomePage: React.FC = () => {
         <div className="absolute top-0 right-0 -mt-12 -mr-12 w-96 h-96 bg-[#FF6600]/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 -mb-12 -ml-12 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 space-y-4">
-          {/* Badge */}
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-semibold">
+        <div className="relative z-10 text-center flex flex-col items-center space-y-3.5">
+          {/* Badge (Varsity Name Centered) */}
+          <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-semibold">
             <Sparkles className="w-3.5 h-3.5 text-[#FF6600]" />
             <span>United International University (UIU) Open Knowledge Repository</span>
           </div>
@@ -72,13 +72,13 @@ export const HomePage: React.FC = () => {
             All Your UIU <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF6600] to-amber-400">Handnotes & Solves</span> in One Place.
           </h1>
 
-          {/* Description */}
-          <p className="text-xs sm:text-sm text-zinc-300 max-w-4xl leading-relaxed">
+          {/* Description (Full Width) */}
+          <p className="text-xs sm:text-sm text-zinc-300 w-full leading-relaxed">
             Free, fast, and community-driven archive of handwritten lecture notes, midterm & final question solves, class tests, and assignments for CSE, Data Science, and all departments.
           </p>
 
           {/* Quick Metrics (Full Width) */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 pt-4 border-t border-zinc-800/80 w-full">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 pt-4 border-t border-zinc-800/80 w-full text-center">
             <div>
               <div className="text-xl sm:text-2xl font-black text-white">{courses.length}+</div>
               <div className="text-xs text-zinc-400 font-medium mt-0.5">Courses Archived</div>
