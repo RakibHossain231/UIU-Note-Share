@@ -38,6 +38,19 @@ import { Course, ResourceItem, Contributor, ResourceType } from '../types';
 import { CloudflareR2Service } from '../services/cloudflareR2Service';
 import { CreatorProfileData } from '../services/storageService';
 
+export const COURSE_PRESET_COLORS = [
+  { label: 'UIU Orange', value: '#FF6600' },
+  { label: 'Royal Blue', value: '#3B82F6' },
+  { label: 'Emerald Green', value: '#10B981' },
+  { label: 'Purple', value: '#8B5CF6' },
+  { label: 'Rose Pink', value: '#EC4899' },
+  { label: 'Amber Gold', value: '#F59E0B' },
+  { label: 'Cyan', value: '#06B6D4' },
+  { label: 'Indigo', value: '#6366F1' },
+  { label: 'Teal', value: '#14B8A6' },
+  { label: 'Ruby Red', value: '#EF4444' }
+];
+
 type AdminTab = 'courses' | 'resources' | 'contributors' | 'requests' | 'settings';
 
 export const AdminDashboard: React.FC = () => {
@@ -862,7 +875,15 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
                       const notesCount = resources.filter(r => r.courseId === course.id).length;
                       return (
                         <tr key={course.id} className="hover:bg-gray-50/50 dark:hover:bg-zinc-800/50">
-                          <td className="px-4 py-3 font-bold text-[#FF6600]">{course.code}</td>
+                          <td className="px-4 py-3 font-bold flex items-center">
+                            <span 
+                              className="w-2.5 h-2.5 rounded-full mr-2 flex-shrink-0" 
+                              style={{ backgroundColor: course.color || '#FF6600' }} 
+                            />
+                            <span style={{ color: course.color || '#FF6600' }}>
+                              {course.code}
+                            </span>
+                          </td>
                           <td className="px-4 py-3 font-medium">{course.title}</td>
                           <td className="px-4 py-3">{course.department}</td>
                           <td className="px-4 py-3">Trimester {course.trimester}</td>
@@ -1551,6 +1572,40 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
                 />
               </div>
 
+              <div>
+                <label className="block font-semibold mb-1.5 text-gray-700 dark:text-gray-300">
+                  Card Theme Color
+                </label>
+                <div className="flex flex-wrap items-center gap-2 p-3 bg-gray-50 dark:bg-zinc-800/60 rounded-xl border border-gray-200 dark:border-zinc-700">
+                  {COURSE_PRESET_COLORS.map(c => (
+                    <button
+                      key={c.value}
+                      type="button"
+                      onClick={() => setEditingCourse({ ...editingCourse, color: c.value })}
+                      title={c.label}
+                      style={{ backgroundColor: c.value }}
+                      className={`w-6 h-6 rounded-full transition-transform border-2 ${
+                        (editingCourse.color || '#FF6600').toLowerCase() === c.value.toLowerCase()
+                          ? 'scale-125 border-gray-900 dark:border-white shadow-md'
+                          : 'border-transparent hover:scale-110'
+                      }`}
+                    />
+                  ))}
+                  <div className="flex items-center space-x-1.5 ml-auto">
+                    <input
+                      type="color"
+                      value={editingCourse.color || '#FF6600'}
+                      onChange={(e) => setEditingCourse({ ...editingCourse, color: e.target.value })}
+                      className="w-7 h-7 rounded-lg cursor-pointer border border-gray-300 dark:border-zinc-700 p-0.5 bg-white"
+                      title="Custom Color"
+                    />
+                    <span className="text-[11px] font-mono text-gray-600 dark:text-gray-300 uppercase font-semibold">
+                      {editingCourse.color || '#FF6600'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex items-center justify-end space-x-3 pt-2">
                 <button
                   type="button"
@@ -1664,6 +1719,40 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
                   onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
                 />
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1.5 text-gray-700 dark:text-gray-300">
+                  Card Theme Color
+                </label>
+                <div className="flex flex-wrap items-center gap-2 p-3 bg-gray-50 dark:bg-zinc-800/60 rounded-xl border border-gray-200 dark:border-zinc-700">
+                  {COURSE_PRESET_COLORS.map(c => (
+                    <button
+                      key={c.value}
+                      type="button"
+                      onClick={() => setNewCourse({ ...newCourse, color: c.value })}
+                      title={c.label}
+                      style={{ backgroundColor: c.value }}
+                      className={`w-6 h-6 rounded-full transition-transform border-2 ${
+                        (newCourse.color || '#FF6600').toLowerCase() === c.value.toLowerCase()
+                          ? 'scale-125 border-gray-900 dark:border-white shadow-md'
+                          : 'border-transparent hover:scale-110'
+                      }`}
+                    />
+                  ))}
+                  <div className="flex items-center space-x-1.5 ml-auto">
+                    <input
+                      type="color"
+                      value={newCourse.color || '#FF6600'}
+                      onChange={(e) => setNewCourse({ ...newCourse, color: e.target.value })}
+                      className="w-7 h-7 rounded-lg cursor-pointer border border-gray-300 dark:border-zinc-700 p-0.5 bg-white"
+                      title="Custom Color"
+                    />
+                    <span className="text-[11px] font-mono text-gray-600 dark:text-gray-300 uppercase font-semibold">
+                      {newCourse.color || '#FF6600'}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center justify-end space-x-3 pt-2">
