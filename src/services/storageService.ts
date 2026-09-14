@@ -4,7 +4,7 @@ import { INITIAL_RESOURCES, INITIAL_CONTRIBUTORS } from '../data/seedResources';
 import { INITIAL_DEPARTMENTS, DepartmentInfo } from '../data/departments';
 
 const STORAGE_KEYS = {
-  COURSES: 'uiu_courses_v3',
+  COURSES: 'uiu_courses_v4',
   RESOURCES: 'uiu_resources_v3',
   CONTRIBUTORS: 'uiu_contributors_v3',
   DEPARTMENTS: 'uiu_departments_v1',
