@@ -144,6 +144,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCreatorProfile(cloudProfile);
         StorageService.saveCreatorProfile(cloudProfile);
       }
+
+      // 6. Sync Visitor Count
+      const cloudVisitors = await SupabaseService.getVisitorCount();
+      if (cloudVisitors > 0) {
+        setVisitorCount(cloudVisitors);
+      }
     } catch (err: any) {
       console.warn('Cloud sync background error:', err);
       setSupabaseStatus('Cloud sync offline (running with local cache)');

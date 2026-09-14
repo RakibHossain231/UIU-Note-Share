@@ -328,23 +328,40 @@ export const SupabaseService = {
     }
   },
 
-  // VISITOR TRACKING
+  // VISITOR TRACKING (Cloud-Synced in Supabase)
   async getVisitorCount(): Promise<number> {
     const local = StorageService.getVisitorCount();
     if (!supabase || !isSupabaseConfigured()) return local;
+
     try {
+      // 1. Check creator_profile table (guaranteed active cloud storage)
+      const { data: profileData, error: profileErr } = await supabase
+        .from('creator_profile')
+        .select('bio')
+        .eq('id', 'site_stats')
+        .maybeSingle();
+
+      if (!profileErr && profileData?.bio) {
+        const parsed = parseInt(profileData.bio, 10);
+        if (!isNaN(parsed) && parsed > 0) {
+          StorageService.setVisitorCount(parsed);
+          return parsed;
+        }
+      }
+
+      // 2. Try dedicated site_stats table if created
       const { data, error } = await supabase
         .from('site_stats')
         .select('value')
         .eq('key', 'total_visitors')
         .maybeSingle();
 
-      if (error || !data) return local;
-      const count = Number(data.value);
-      if (!isNaN(count) && count > 0) {
+      if (!error && data && !isNaN(Number(data.value))) {
+        const count = Number(data.value);
         StorageService.setVisitorCount(count);
         return count;
       }
+
       return local;
     } catch {
       return local;
@@ -352,32 +369,56 @@ export const SupabaseService = {
   },
 
   async recordVisitor(): Promise<number> {
-    const isTracked = typeof window !== 'undefined' ? sessionStorage.getItem('uiu_session_tracked') : null;
-    if (isTracked) {
+    // 30-second debounce per browser tab to avoid accidental double-clicks while testing
+    const lastVisit = typeof window !== 'undefined' ? sessionStorage.getItem('uiu_last_visit_time') : null;
+    const now = Date.now();
+
+    if (lastVisit && now - Number(lastVisit) < 30 * 1000) {
+      // Return fresh live count from cloud without incrementing within 30s
       return this.getVisitorCount();
     }
+
     if (typeof window !== 'undefined') {
-      sessionStorage.setItem('uiu_session_tracked', '1');
+      sessionStorage.setItem('uiu_last_visit_time', now.toString());
     }
 
-    const currentCount = await this.getVisitorCount();
-    const nextCount = currentCount + 1;
-    StorageService.setVisitorCount(nextCount);
+    try {
+      // Fetch latest live count from Supabase
+      const currentCount = await this.getVisitorCount();
+      const nextCount = currentCount + 1;
 
-    if (supabase && isSupabaseConfigured()) {
-      try {
+      // Update local storage immediately
+      StorageService.setVisitorCount(nextCount);
+
+      if (supabase && isSupabaseConfigured()) {
+        // 1. Cloud save to creator_profile table (id = 'site_stats')
         await supabase
-          .from('site_stats')
+          .from('creator_profile')
           .upsert({
-            key: 'total_visitors',
-            value: nextCount,
+            id: 'site_stats',
+            name: 'Site Stats',
+            department: 'System',
+            batch: 'v1',
+            bio: nextCount.toString(),
             updated_at: new Date().toISOString()
           });
-      } catch (err) {
-        console.warn('Supabase visitor count increment deferred:', err);
-      }
-    }
 
-    return nextCount;
+        // 2. Also try site_stats table
+        try {
+          await supabase
+            .from('site_stats')
+            .upsert({
+              key: 'total_visitors',
+              value: nextCount,
+              updated_at: new Date().toISOString()
+            });
+        } catch {}
+      }
+
+      return nextCount;
+    } catch (err) {
+      console.warn('Visitor record error:', err);
+      return StorageService.incrementVisitorCount();
+    }
   }
 };
