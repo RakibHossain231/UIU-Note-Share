@@ -56,98 +56,44 @@ export const HomePage: React.FC = () => {
     <div className="space-y-10 pb-16">
       
       {/* Hero Banner */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 via-zinc-950 to-black text-white p-6 sm:p-12 border border-zinc-800 shadow-2xl">
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 via-zinc-950 to-black text-white p-6 sm:p-8 lg:p-10 border border-zinc-800 shadow-2xl">
         <div className="absolute top-0 right-0 -mt-12 -mr-12 w-96 h-96 bg-[#FF6600]/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 -mb-12 -ml-12 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          {/* Left Column: Headline & Metrics */}
-          <div className="lg:col-span-7 space-y-5">
-            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-semibold">
-              <Sparkles className="w-3.5 h-3.5 text-[#FF6600]" />
-              <span>United International University (UIU) Open Knowledge Repository</span>
-            </div>
-
-            <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
-              All Your UIU <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF6600] to-amber-400">Handnotes & Solves</span> in One Place.
-            </h1>
-
-            <p className="text-sm sm:text-base text-zinc-300 max-w-2xl leading-relaxed">
-              Free, fast, and community-driven archive of handwritten lecture notes, midterm & final question solves, class tests, and assignments for CSE, Data Science, and all departments.
-            </p>
-
-            {/* Quick Metrics */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-zinc-800/80">
-              <div>
-                <div className="text-2xl font-black text-white">{courses.length}+</div>
-                <div className="text-xs text-zinc-400 font-medium">Courses Archived</div>
-              </div>
-              <div>
-                <div className="text-2xl font-black text-[#FF6600]">{resources.length}+</div>
-                <div className="text-xs text-zinc-400 font-medium">Verified Solves & Notes</div>
-              </div>
-              <div>
-                <div className="text-2xl font-black text-white">{contributors.length}</div>
-                <div className="text-xs text-zinc-400 font-medium">Active Contributors</div>
-              </div>
-              <div>
-                <div className="text-2xl font-black text-emerald-400">100%</div>
-                <div className="text-xs text-zinc-400 font-medium">Free Forever</div>
-              </div>
-            </div>
+        <div className="relative z-10 space-y-5">
+          {/* Badge */}
+          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-semibold">
+            <Sparkles className="w-3.5 h-3.5 text-[#FF6600]" />
+            <span>United International University (UIU) Open Knowledge Repository</span>
           </div>
 
-          {/* Right Column: Interactive Quick Highlights Card */}
-          <div className="lg:col-span-5">
-            <div className="relative rounded-2xl bg-white/[0.04] border border-white/10 p-5 sm:p-6 backdrop-blur-xl shadow-2xl space-y-3.5">
-              <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                <div className="flex items-center space-x-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-xs font-bold text-zinc-200 uppercase tracking-wider">UIU Archive Hub</span>
-                </div>
-                <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-orange-500/20 text-[#FF6600] border border-orange-500/30">
-                  100% Free
-                </span>
-              </div>
+          {/* Headline */}
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
+            All Your UIU <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF6600] to-amber-400">Handnotes & Solves</span> in One Place.
+          </h1>
 
-              {/* Feature Highlights */}
-              <div className="space-y-2.5">
-                <div className="flex items-start space-x-3 p-3 rounded-xl bg-white/[0.03] border border-white/5 hover:border-orange-500/40 transition-colors">
-                  <span className="text-lg">📝</span>
-                  <div>
-                    <h4 className="text-xs font-bold text-white">Handwritten Notes</h4>
-                    <p className="text-[11px] text-zinc-400">Scanned, organized lecture notes from fellow students.</p>
-                  </div>
-                </div>
+          {/* Description */}
+          <p className="text-sm sm:text-base text-zinc-300 max-w-3xl leading-relaxed">
+            Free, fast, and community-driven archive of handwritten lecture notes, midterm & final question solves, class tests, and assignments for CSE, Data Science, and all departments.
+          </p>
 
-                <div className="flex items-start space-x-3 p-3 rounded-xl bg-white/[0.03] border border-white/5 hover:border-orange-500/40 transition-colors">
-                  <span className="text-lg">💡</span>
-                  <div>
-                    <h4 className="text-xs font-bold text-white">Mid & Final Questions + Solves</h4>
-                    <p className="text-[11px] text-zinc-400">Past trimester question papers paired with solutions.</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3 p-3 rounded-xl bg-white/[0.03] border border-white/5 hover:border-orange-500/40 transition-colors">
-                  <span className="text-lg">🎯</span>
-                  <div>
-                    <h4 className="text-xs font-bold text-white">CT & Assignment Solves</h4>
-                    <p className="text-[11px] text-zinc-400">Class tests (CT 1-4) & assignment problem codes.</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer info */}
-              <div className="pt-2 flex items-center justify-between text-[11px] text-zinc-400 border-t border-white/10">
-                <span className="flex items-center space-x-1.5">
-                  <span>☁️</span>
-                  <span>Direct Drive & Cloud Access</span>
-                </span>
-                <span className="text-emerald-400 font-semibold flex items-center space-x-1">
-                  <span>✓</span>
-                  <span>No Sign-in Needed</span>
-                </span>
-              </div>
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-5 border-t border-zinc-800/80 max-w-4xl">
+            <div>
+              <div className="text-2xl sm:text-3xl font-black text-white">{courses.length}+</div>
+              <div className="text-xs text-zinc-400 font-medium mt-0.5">Courses Archived</div>
+            </div>
+            <div>
+              <div className="text-2xl sm:text-3xl font-black text-[#FF6600]">{resources.length}+</div>
+              <div className="text-xs text-zinc-400 font-medium mt-0.5">Verified Solves & Notes</div>
+            </div>
+            <div>
+              <div className="text-2xl sm:text-3xl font-black text-white">{contributors.length}</div>
+              <div className="text-xs text-zinc-400 font-medium mt-0.5">Active Contributors</div>
+            </div>
+            <div>
+              <div className="text-2xl sm:text-3xl font-black text-emerald-400">100%</div>
+              <div className="text-xs text-zinc-400 font-medium mt-0.5">Free Forever</div>
             </div>
           </div>
         </div>
