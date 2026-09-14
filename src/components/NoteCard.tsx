@@ -24,8 +24,10 @@ export const NoteCard: React.FC<NoteCardProps> = ({ item, onPreview }) => {
   const getTypeLabel = () => {
     switch (item.type) {
       case 'handnote': return 'Handwritten Note';
-      case 'question_mid': return 'Mid Term Solve';
-      case 'question_final': return 'Final Exam Solve';
+      case 'mid':
+      case 'question_mid': return 'Mid Questions & Solves';
+      case 'final':
+      case 'question_final': return 'Final Questions & Solves';
       case 'ct': return `Class Test (CT-${item.ctNumber || '1'})`;
       case 'assignment': return `Assignment ${item.assignmentNumber || '1'}`;
       case 'cheatsheet': return 'Formula & Cheat Sheet';
@@ -36,7 +38,9 @@ export const NoteCard: React.FC<NoteCardProps> = ({ item, onPreview }) => {
   const getTypeBadgeClass = () => {
     switch (item.type) {
       case 'handnote': return 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800';
+      case 'mid':
       case 'question_mid': return 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800';
+      case 'final':
       case 'question_final': return 'bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-800';
       case 'ct': return 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
       case 'assignment': return 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800';

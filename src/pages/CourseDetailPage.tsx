@@ -442,7 +442,9 @@ export const CourseDetailPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
               {activeItems.map((item) => {
                 const isSol = isSolutionItem(item);
+                const isQues = isQuestionItem(item);
                 const readableSemester = item.trimesterCode ? formatTrimesterCode(item.trimesterCode) : '';
+                const showBadgeRow = selectedCategory !== 'handnote' && Boolean(item.ctNumber || item.assignmentNumber || isSol || isQues);
 
                 return (
                   <div
@@ -452,8 +454,8 @@ export const CourseDetailPage: React.FC = () => {
                     className="group relative flex flex-col justify-between text-left bg-white dark:bg-[#1E1E1E] border border-gray-200/80 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-1 cursor-pointer"
                   >
                     <div>
-                      {/* Top Row Badges (Only shown for non-handnote categories with badges) */}
-                      {selectedCategory !== 'handnote' && (
+                      {/* Top Row Badges (Only shown when there are contextual badges) */}
+                      {showBadgeRow && (
                         <div className="flex items-center justify-between gap-2 mb-3">
                           {/* CT or Assignment Badge */}
                           {item.ctNumber ? (
@@ -474,11 +476,11 @@ export const CourseDetailPage: React.FC = () => {
                               <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800 shadow-sm flex items-center space-x-1">
                                 <span>💡 SOLVE</span>
                               </span>
-                            ) : (
+                            ) : isQues ? (
                               <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-sky-100 text-sky-700 dark:bg-sky-950/70 dark:text-sky-300 border border-sky-200/60 dark:border-sky-800 shadow-sm flex items-center space-x-1">
                                 <span>❓ QUESTION</span>
                               </span>
-                            )}
+                            ) : null}
                           </div>
                         </div>
                       )}
