@@ -78,7 +78,7 @@ export const isQuestionItem = (item: ResourceItem): boolean => {
     return false;
   }
   const title = (item.title || '').toLowerCase();
-  if (title.includes('question') || title.includes('ques') || title.includes('qp')) {
+  if (title.includes('question') || title.includes('qeustion') || title.includes('ques') || title.includes('qp')) {
     return true;
   }
   return !isSolutionItem(item);
@@ -131,6 +131,7 @@ export const CourseDetailPage: React.FC = () => {
 
     // 2. Mid Questions & Solves (combined) - STRICTLY only mid types
     const midItems = courseResources.filter(r => 
+      r.type === 'mid' ||
       r.type === 'question_mid' || 
       r.type === 'mid_question' || 
       r.type === 'mid_solve'
@@ -138,6 +139,7 @@ export const CourseDetailPage: React.FC = () => {
 
     // 3. Final Questions & Solves (combined) - STRICTLY only final types
     const finalItems = courseResources.filter(r => 
+      r.type === 'final' ||
       r.type === 'question_final' || 
       r.type === 'final_question' || 
       r.type === 'final_solve'
