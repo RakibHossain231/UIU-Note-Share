@@ -47,5 +47,21 @@ export const INITIAL_DEPARTMENTS: DepartmentInfo[] = [
     iconName: 'Building',
     color: '#EC4899',
     description: 'Structural mechanics, geotechnical, transportation, environmental, and fluid mechanics.'
+  },
+  {
+    code: 'Pharmacy',
+    name: 'Department of Pharmacy',
+    shortName: 'Pharmacy',
+    iconName: 'Pill',
+    color: '#06B6D4',
+    description: 'Pharmacology, clinical pharmacy, medicinal chemistry, and pharmaceutical analysis.'
+  },
+  {
+    code: 'BGE',
+    name: 'Biotechnology and Genetic Engineering',
+    shortName: 'BGE',
+    iconName: 'Dna',
+    color: '#14B8A6',
+    description: 'Molecular biology, genetic engineering, biochemistry, bioinformatics, and immunology.'
   }
 ];

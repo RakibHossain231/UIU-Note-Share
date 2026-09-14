@@ -1,5 +1,5 @@
 import React from 'react';
-import { Code, Database, Zap, TrendingUp, Building, Layers } from 'lucide-react';
+import { Code, Database, Zap, TrendingUp, Building, Layers, Pill, Dna } from 'lucide-react';
 import { useData } from '../context/DataContext';
 
 export const DepartmentFilter: React.FC = () => {
@@ -12,6 +12,8 @@ export const DepartmentFilter: React.FC = () => {
       case 'EEE': return Zap;
       case 'BBA': return TrendingUp;
       case 'Civil': return Building;
+      case 'Pharmacy': return Pill;
+      case 'BGE': return Dna;
       default: return Layers;
     }
   };

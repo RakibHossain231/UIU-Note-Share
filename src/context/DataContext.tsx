@@ -100,8 +100,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCourses(cloudCourses);
         StorageService.saveCourses(cloudCourses);
       } else if (cloudCourses && cloudCourses.length === 0) {
-        // First-time seed: push default courses to Supabase
-        await SupabaseService.bulkUpsertCourses(INITIAL_COURSES);
+        setCourses([]);
+        StorageService.saveCourses([]);
       }
 
       // 2. Sync Resources

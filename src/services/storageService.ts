@@ -7,7 +7,7 @@ const STORAGE_KEYS = {
   COURSES: 'uiu_courses_v4',
   RESOURCES: 'uiu_resources_v3',
   CONTRIBUTORS: 'uiu_contributors_v3',
-  DEPARTMENTS: 'uiu_departments_v1',
+  DEPARTMENTS: 'uiu_departments_v2',
   PINNED_COURSES: 'uiu_pinned_courses_v1',
   NOTE_REQUESTS: 'uiu_note_requests_v2',
   R2_CONFIG: 'uiu_r2_config_v1',
