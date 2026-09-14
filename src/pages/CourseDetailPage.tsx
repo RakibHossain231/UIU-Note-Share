@@ -86,7 +86,7 @@ export const isQuestionItem = (item: ResourceItem): boolean => {
 
 export const CourseDetailPage: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
-  const { courses, resources, pinnedCourseIds, togglePinCourse } = useData();
+  const { courses, resources, pinnedCourseIds, togglePinCourse, recordCourseView } = useData();
 
   // Selected Category (null = Level 1 Category Hub, string = Level 2 Trimester Grid)
   const [selectedCategory, setSelectedCategory] = useState<CategoryKey | null>(null);
@@ -97,6 +97,13 @@ export const CourseDetailPage: React.FC = () => {
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
+
+  // Track course access view for admin analytics
+  React.useEffect(() => {
+    if (courseId) {
+      recordCourseView(courseId);
+    }
+  }, [courseId, recordCourseView]);
 
   // Scroll to top whenever category view changes (level 1 <-> level 2)
   React.useEffect(() => {

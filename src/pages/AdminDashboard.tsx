@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   ShieldCheck, 
   Lock, 
@@ -31,7 +31,12 @@ import {
   Copy,
   RefreshCw,
   UserCheck,
-  GraduationCap
+  GraduationCap,
+  BarChart3,
+  TrendingUp,
+  Activity,
+  Flame,
+  ArrowUpRight
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { Course, ResourceItem, Contributor, ResourceType } from '../types';
@@ -51,7 +56,7 @@ export const COURSE_PRESET_COLORS = [
   { label: 'Ruby Red', value: '#EF4444' }
 ];
 
-type AdminTab = 'courses' | 'resources' | 'contributors' | 'requests' | 'settings';
+type AdminTab = 'courses' | 'resources' | 'contributors' | 'requests' | 'analytics' | 'settings';
 
 export const AdminDashboard: React.FC = () => {
   const { 
@@ -82,7 +87,9 @@ export const AdminDashboard: React.FC = () => {
     syncWithCloud,
     departments, 
     noteRequests,
-    visitorCount
+    visitorCount,
+    courseViews,
+    refreshAnalytics
   } = useData();
 
   // 2-Step Login form state
@@ -109,6 +116,60 @@ export const AdminDashboard: React.FC = () => {
 
   // Active admin tab
   const [activeTab, setActiveTab] = useState<AdminTab>('courses');
+
+  // Traffic & Course Analytics state
+  const [isRefreshingAnalytics, setIsRefreshingAnalytics] = useState(false);
+  const [analyticsSearch, setAnalyticsSearch] = useState('');
+
+  const analyticsData = useMemo(() => {
+    const viewsMap = courseViews || {};
+    const courseList = courses.map(course => {
+      const views = viewsMap[course.id] || 0;
+      return {
+        ...course,
+        views
+      };
+    });
+
+    // Sort descending by views, then alphabetically by code
+    courseList.sort((a, b) => b.views - a.views || a.code.localeCompare(b.code));
+
+    const totalCourseAccesses = Object.values(viewsMap).reduce((sum, v) => sum + (v || 0), 0);
+    const maxViews = courseList[0]?.views || 0;
+
+    // Department breakdown
+    const deptViews: Record<string, { count: number; accesses: number }> = {};
+    courses.forEach(c => {
+      const dept = c.department || 'Other';
+      const views = viewsMap[c.id] || 0;
+      if (!deptViews[dept]) {
+        deptViews[dept] = { count: 0, accesses: 0 };
+      }
+      deptViews[dept].count += 1;
+      deptViews[dept].accesses += views;
+    });
+
+    const sortedDepts = Object.entries(deptViews)
+      .map(([dept, data]) => ({
+        dept,
+        count: data.count,
+        accesses: data.accesses,
+        percentage: totalCourseAccesses > 0 ? Math.round((data.accesses / totalCourseAccesses) * 100) : 0
+      }))
+      .sort((a, b) => b.accesses - a.accesses);
+
+    const topCourse = courseList.find(c => c.views > 0) || null;
+    const topDept = sortedDepts.find(d => d.accesses > 0)?.dept || sortedDepts[0]?.dept || 'CSE';
+
+    return {
+      coursesWithViews: courseList,
+      totalCourseAccesses,
+      maxViews: Math.max(maxViews, 1),
+      deptBreakdown: sortedDepts,
+      topCourse,
+      topDept
+    };
+  }, [courses, courseViews]);
 
   // Course modal state
   const [courseModalOpen, setCourseModalOpen] = useState(false);
@@ -819,6 +880,7 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
           { key: 'resources', label: 'Notes & Exam Solves', icon: FileText, count: resources.length },
           { key: 'contributors', label: 'Contributors', icon: Users, count: contributors.length },
           { key: 'requests', label: 'Student Requests', icon: Inbox, count: noteRequests.length },
+          { key: 'analytics', label: 'Traffic & Course Analytics', icon: BarChart3 },
           { key: 'settings', label: 'Settings & Cloud Database', icon: Settings },
         ].map((tab) => {
           const Icon = tab.icon;
@@ -1152,7 +1214,290 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
         </div>
       )}
 
-      {/* TAB 5: SETTINGS & CLOUD DATABASE */}
+      {/* TAB 5: TRAFFIC & COURSE ACCESS ANALYTICS */}
+      {activeTab === 'analytics' && (
+        <div className="space-y-6">
+          {/* Top Header & Actions */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#1A1A1A] p-5 rounded-2xl border border-gray-200 dark:border-zinc-800">
+            <div>
+              <div className="flex items-center space-x-2">
+                <BarChart3 className="w-5 h-5 text-[#FF6600]" />
+                <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                  Course Traffic & Access Analytics
+                </h3>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Live statistics showing which courses and departments students view most frequently on UIU Note Share.
+              </p>
+            </div>
+            <button
+              onClick={async () => {
+                setIsRefreshingAnalytics(true);
+                try {
+                  await refreshAnalytics();
+                } finally {
+                  setTimeout(() => setIsRefreshingAnalytics(false), 500);
+                }
+              }}
+              disabled={isRefreshingAnalytics}
+              className="flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 hover:border-[#FF6600] dark:hover:border-[#FF6600] text-gray-800 dark:text-zinc-200 transition-all shadow-sm shrink-0"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingAnalytics ? 'animate-spin text-[#FF6600]' : ''}`} />
+              <span>{isRefreshingAnalytics ? 'Refreshing...' : 'Refresh Cloud Stats'}</span>
+            </button>
+          </div>
+
+          {/* 4 Overview Analytics Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-2xl p-4 flex items-start justify-between">
+              <div>
+                <span className="text-xs text-gray-500 font-medium">Total Site Visitors</span>
+                <div className="text-2xl font-black text-emerald-500 mt-1">
+                  {visitorCount.toLocaleString()}
+                </div>
+                <span className="text-[10px] text-gray-400">Total website hits tracked</span>
+              </div>
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-500 flex items-center justify-center shrink-0">
+                <Eye className="w-4 h-4" />
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-2xl p-4 flex items-start justify-between">
+              <div>
+                <span className="text-xs text-gray-500 font-medium">Total Course Accesses</span>
+                <div className="text-2xl font-black text-blue-500 mt-1">
+                  {analyticsData.totalCourseAccesses.toLocaleString()}
+                </div>
+                <span className="text-[10px] text-gray-400">Total course views by students</span>
+              </div>
+              <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-500 flex items-center justify-center shrink-0">
+                <Activity className="w-4 h-4" />
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-2xl p-4 flex items-start justify-between">
+              <div>
+                <span className="text-xs text-gray-500 font-medium">#1 Most Popular Course</span>
+                <div className="text-lg font-black text-[#FF6600] mt-1 truncate max-w-[170px]" title={analyticsData.topCourse ? `${analyticsData.topCourse.code} - ${analyticsData.topCourse.title}` : 'None'}>
+                  {analyticsData.topCourse ? analyticsData.topCourse.code : 'No visits yet'}
+                </div>
+                <span className="text-[10px] text-gray-400">
+                  {analyticsData.topCourse ? `${analyticsData.topCourse.views} student views` : 'Browse course to start'}
+                </span>
+              </div>
+              <div className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-950/50 text-[#FF6600] flex items-center justify-center shrink-0">
+                <Flame className="w-4 h-4" />
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-2xl p-4 flex items-start justify-between">
+              <div>
+                <span className="text-xs text-gray-500 font-medium">Top Department</span>
+                <div className="text-2xl font-black text-purple-500 mt-1">
+                  {analyticsData.topDept}
+                </div>
+                <span className="text-[10px] text-gray-400">Highest student engagement</span>
+              </div>
+              <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-500 flex items-center justify-center shrink-0">
+                <GraduationCap className="w-4 h-4" />
+              </div>
+            </div>
+          </div>
+
+          {/* Department Breakdown Section */}
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <TrendingUp className="w-4 h-4 text-purple-500" />
+                <h4 className="text-sm font-bold text-gray-900 dark:text-white">
+                  Department Traffic Share
+                </h4>
+              </div>
+              <span className="text-xs text-gray-500">
+                Across {analyticsData.deptBreakdown.length} departments
+              </span>
+            </div>
+
+            {/* Department Stacked Distribution Bar */}
+            {analyticsData.totalCourseAccesses > 0 ? (
+              <div className="space-y-3">
+                <div className="h-3 w-full bg-gray-100 dark:bg-zinc-800 rounded-full overflow-hidden flex">
+                  {analyticsData.deptBreakdown.map((d, index) => {
+                    const colors = ['#FF6600', '#3B82F6', '#10B981', '#8B5CF6', '#EC4899', '#06B6D4'];
+                    const color = colors[index % colors.length];
+                    const widthPct = (d.accesses / analyticsData.totalCourseAccesses) * 100;
+                    if (widthPct === 0) return null;
+                    return (
+                      <div
+                        key={d.dept}
+                        style={{ width: `${widthPct}%`, backgroundColor: color }}
+                        className="h-full transition-all duration-500 hover:opacity-80"
+                        title={`${d.dept}: ${d.accesses} views (${Math.round(widthPct)}%)`}
+                      />
+                    );
+                  })}
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-1">
+                  {analyticsData.deptBreakdown.map((d, index) => {
+                    const colors = ['#FF6600', '#3B82F6', '#10B981', '#8B5CF6', '#EC4899', '#06B6D4'];
+                    const color = colors[index % colors.length];
+                    return (
+                      <div key={d.dept} className="p-2.5 rounded-xl bg-gray-50 dark:bg-zinc-800/60 border border-gray-200/70 dark:border-zinc-700/60">
+                        <div className="flex items-center space-x-1.5 mb-1">
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+                          <span className="text-xs font-bold text-gray-900 dark:text-white">{d.dept}</span>
+                        </div>
+                        <div className="text-sm font-black text-gray-900 dark:text-white">
+                          {d.accesses} <span className="text-[10px] font-normal text-gray-400">views</span>
+                        </div>
+                        <div className="text-[10px] text-gray-500 mt-0.5">
+                          {d.percentage}% share • {d.count} courses
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="py-6 text-center text-xs text-gray-400">
+                No course visits recorded yet. As students explore courses, department distribution will appear here.
+              </div>
+            )}
+          </div>
+
+          {/* Course Popularity Visual Bar Graphs */}
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-2xl p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h4 className="text-sm font-bold text-gray-900 dark:text-white">
+                  Course Access Leaderboard & Graphs
+                </h4>
+                <p className="text-xs text-gray-500">
+                  Ranking and visual view progress for every course in the catalog.
+                </p>
+              </div>
+              <div className="relative max-w-xs w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                <input
+                  type="text"
+                  value={analyticsSearch}
+                  onChange={(e) => setAnalyticsSearch(e.target.value)}
+                  placeholder="Filter by code or title..."
+                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white focus:outline-none focus:border-[#FF6600]"
+                />
+              </div>
+            </div>
+
+            {/* Visual Course List with Bar Graphs */}
+            <div className="space-y-2.5">
+              {analyticsData.coursesWithViews
+                .filter(c => 
+                  c.code.toLowerCase().includes(analyticsSearch.toLowerCase()) ||
+                  c.title.toLowerCase().includes(analyticsSearch.toLowerCase()) ||
+                  (c.department && c.department.toLowerCase().includes(analyticsSearch.toLowerCase()))
+                )
+                .map((course, index) => {
+                  const percentageOfMax = analyticsData.maxViews > 0 
+                    ? (course.views / analyticsData.maxViews) * 100 
+                    : 0;
+                  const percentageOfTotal = analyticsData.totalCourseAccesses > 0
+                    ? Math.round((course.views / analyticsData.totalCourseAccesses) * 100)
+                    : 0;
+
+                  return (
+                    <div
+                      key={course.id}
+                      className="p-3 sm:p-4 rounded-xl bg-gray-50 dark:bg-zinc-800/50 border border-gray-200/80 dark:border-zinc-700/60 hover:border-gray-300 dark:hover:border-zinc-600 transition-all space-y-2.5"
+                    >
+                      {/* Course Row Header */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center space-x-3 min-w-0">
+                          {/* Rank Badge */}
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${
+                            index === 0 && course.views > 0
+                              ? 'bg-amber-400/20 text-amber-500 border border-amber-400/40 shadow-sm'
+                              : index === 1 && course.views > 0
+                              ? 'bg-slate-300/20 text-slate-300 border border-slate-300/40'
+                              : index === 2 && course.views > 0
+                              ? 'bg-amber-700/20 text-amber-600 border border-amber-700/40'
+                              : 'bg-gray-200 dark:bg-zinc-700 text-gray-600 dark:text-zinc-400 text-[11px]'
+                          }`}>
+                            #{index + 1}
+                          </div>
+
+                          {/* Course Details */}
+                          <div className="min-w-0">
+                            <div className="flex items-center space-x-2 flex-wrap">
+                              <span className="font-mono font-bold text-xs text-gray-900 dark:text-white">
+                                {course.code}
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-100 dark:bg-orange-950/60 text-[#FF6600]">
+                                {course.department}
+                              </span>
+                              {course.trimester && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-200 dark:bg-zinc-700 text-gray-600 dark:text-zinc-300">
+                                  Trim {course.trimester}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-zinc-400 truncate max-w-sm sm:max-w-md mt-0.5">
+                              {course.title}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Views & Link */}
+                        <div className="flex items-center space-x-3 shrink-0">
+                          <div className="text-right">
+                            <div className="text-sm font-black text-gray-900 dark:text-white flex items-center justify-end space-x-1">
+                              <span>{course.views}</span>
+                              <span className="text-[10px] font-medium text-gray-500">views</span>
+                            </div>
+                            <span className="text-[10px] text-gray-400">
+                              {percentageOfTotal}% share
+                            </span>
+                          </div>
+
+                          <a
+                            href={`/course/${course.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-[#FF6600] hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
+                            title="Open course in new tab"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
+                      </div>
+
+                      {/* Visual Progress Graph Bar */}
+                      <div className="space-y-1">
+                        <div className="h-2 w-full bg-gray-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-700"
+                            style={{
+                              width: `${course.views > 0 ? Math.max(percentageOfMax, 3) : 0}%`,
+                              backgroundColor: course.color || '#FF6600',
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+              {analyticsData.coursesWithViews.length === 0 && (
+                <div className="py-8 text-center text-xs text-gray-400">
+                  No courses found to display analytics for.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 6: SETTINGS & CLOUD DATABASE */}
       {activeTab === 'settings' && (
         <div className="space-y-8 max-w-3xl">
           

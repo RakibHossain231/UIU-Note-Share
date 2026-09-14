@@ -56,6 +56,9 @@ interface DataContextType {
   logoutAdmin: () => void;
   changeAdminPassword: (oldPass: string, newPass: string) => boolean;
   visitorCount: number;
+  courseViews: Record<string, number>;
+  recordCourseView: (courseId: string) => Promise<void>;
+  refreshAnalytics: () => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -74,6 +77,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(false);
   const [supabaseStatus, setSupabaseStatus] = useState<string>('Checking connection...');
   const [visitorCount, setVisitorCount] = useState<number>(() => StorageService.getVisitorCount());
+  const [courseViews, setCourseViews] = useState<Record<string, number>>(() => StorageService.getCourseViews());
 
   // Initialize local data immediately for instant rendering
   useEffect(() => {
@@ -85,10 +89,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setNoteRequests(StorageService.getNoteRequests());
     setIsAdmin(StorageService.isAdminLoggedIn());
     setCreatorProfile(StorageService.getCreatorProfile());
+    setCourseViews(StorageService.getCourseViews());
 
     // Record visit and sync visitor count immediately
     SupabaseService.recordVisitor().then((count) => {
       if (count >= 0) setVisitorCount(count);
+    });
+
+    // Sync cloud course views
+    SupabaseService.getCourseViews().then((views) => {
+      if (views) setCourseViews(views);
     });
 
     // Real-time polling: sync latest visitor count across all users every 8 seconds
@@ -158,6 +168,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const cloudVisitors = await SupabaseService.getVisitorCount();
       if (cloudVisitors >= 0) {
         setVisitorCount(cloudVisitors);
+      }
+
+      // 7. Sync Course Views
+      const cloudViews = await SupabaseService.getCourseViews();
+      if (cloudViews) {
+        setCourseViews(cloudViews);
       }
     } catch (err: any) {
       console.warn('Cloud sync background error:', err);
@@ -377,6 +393,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAdmin(false);
   };
 
+  const handleRecordCourseView = useCallback(async (courseId: string) => {
+    const updated = await SupabaseService.recordCourseView(courseId);
+    setCourseViews(updated);
+  }, []);
+
+  const handleRefreshAnalytics = useCallback(async () => {
+    const [visitors, views] = await Promise.all([
+      SupabaseService.getVisitorCount(),
+      SupabaseService.getCourseViews()
+    ]);
+    if (visitors >= 0) setVisitorCount(visitors);
+    if (views) setCourseViews(views);
+  }, []);
+
   return (
     <DataContext.Provider
       value={{
@@ -417,6 +447,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logoutAdmin,
         changeAdminPassword,
         visitorCount,
+        courseViews,
+        recordCourseView: handleRecordCourseView,
+        refreshAnalytics: handleRefreshAnalytics,
       }}
     >
       {children}

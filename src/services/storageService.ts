@@ -15,7 +15,8 @@ const STORAGE_KEYS = {
   ADMIN_AUTH: 'uiu_admin_auth_v1',
   ADMIN_CREDENTIALS: 'uiu_admin_credentials_v3',
   CREATOR_PROFILE: 'uiu_creator_profile_v1',
-  VISITORS: 'uiu_total_visitors_v1'
+  VISITORS: 'uiu_total_visitors_v1',
+  COURSE_VIEWS: 'uiu_course_views_v1'
 };
 
 export interface CreatorProfileData {
@@ -353,5 +354,27 @@ export const StorageService = {
     const next = cur + 1;
     this.setVisitorCount(next);
     return next;
+  },
+
+  // Course Access Views
+  getCourseViews(): Record<string, number> {
+    const raw = localStorage.getItem(STORAGE_KEYS.COURSE_VIEWS);
+    if (!raw) return {};
+    try {
+      return JSON.parse(raw) || {};
+    } catch {
+      return {};
+    }
+  },
+
+  setCourseViews(views: Record<string, number>): void {
+    localStorage.setItem(STORAGE_KEYS.COURSE_VIEWS, JSON.stringify(views));
+  },
+
+  incrementCourseView(courseId: string): Record<string, number> {
+    const views = this.getCourseViews();
+    views[courseId] = (views[courseId] || 0) + 1;
+    this.setCourseViews(views);
+    return views;
   }
 };

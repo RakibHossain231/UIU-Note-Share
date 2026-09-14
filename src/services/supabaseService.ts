@@ -407,5 +407,59 @@ export const SupabaseService = {
       console.warn('Visitor record error:', err);
       return StorageService.incrementVisitorCount();
     }
+  },
+
+  // COURSE ACCESS ANALYTICS (Cloud-Synced)
+  async getCourseViews(): Promise<Record<string, number>> {
+    const local = StorageService.getCourseViews();
+    if (!supabase || !isSupabaseConfigured()) return local;
+
+    try {
+      const { data, error } = await supabase
+        .from('creator_profile')
+        .select('bio')
+        .eq('id', 'course_stats')
+        .maybeSingle();
+
+      if (!error && data?.bio) {
+        try {
+          const parsed = JSON.parse(data.bio);
+          if (parsed && typeof parsed === 'object') {
+            StorageService.setCourseViews(parsed);
+            return parsed;
+          }
+        } catch {}
+      }
+
+      return local;
+    } catch {
+      return local;
+    }
+  },
+
+  async recordCourseView(courseId: string): Promise<Record<string, number>> {
+    try {
+      const views = await this.getCourseViews();
+      views[courseId] = (views[courseId] || 0) + 1;
+      StorageService.setCourseViews(views);
+
+      if (supabase && isSupabaseConfigured()) {
+        await supabase
+          .from('creator_profile')
+          .upsert({
+            id: 'course_stats',
+            name: 'Course Stats',
+            department: 'System',
+            batch: 'v1',
+            bio: JSON.stringify(views),
+            updated_at: new Date().toISOString()
+          });
+      }
+
+      return views;
+    } catch (err) {
+      console.warn('Course view record error:', err);
+      return StorageService.incrementCourseView(courseId);
+    }
   }
 };
