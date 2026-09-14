@@ -63,7 +63,6 @@ export const CourseDetailPage: React.FC = () => {
   // Selected Category (null = Level 1 Category Hub, string = Level 2 Trimester Grid)
   const [selectedCategory, setSelectedCategory] = useState<CategoryKey | null>(null);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
-  const [subFilter, setSubFilter] = useState<string>('all');
 
   // Modals state
   const [previewItem, setPreviewItem] = useState<ResourceItem | null>(null);
@@ -71,9 +70,8 @@ export const CourseDetailPage: React.FC = () => {
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
 
-  // Scroll to top and reset sub-filter whenever category view changes (level 1 <-> level 2)
+  // Scroll to top whenever category view changes (level 1 <-> level 2)
   React.useEffect(() => {
-    setSubFilter('all');
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     if (document.documentElement) document.documentElement.scrollTop = 0;
     if (document.body) document.body.scrollTop = 0;
@@ -208,30 +206,10 @@ export const CourseDetailPage: React.FC = () => {
     });
   }, [categoryData]);
 
-  // Selected category items with sub-filter and sorting
+  // Selected category items with sorting
   const activeItems = useMemo(() => {
     if (!selectedCategory) return [];
-    let rawItems = [...categoryData[selectedCategory].items];
-
-    if (subFilter !== 'all') {
-      if (subFilter === 'question') {
-        rawItems = rawItems.filter(item => isQuestionItem(item));
-      } else if (subFilter === 'solve') {
-        rawItems = rawItems.filter(item => isSolutionItem(item));
-      } else if (subFilter.startsWith('ct')) {
-        const num = parseInt(subFilter.replace('ct', ''), 10);
-        rawItems = rawItems.filter(item => 
-          item.ctNumber === num || 
-          new RegExp(`\\bct\\s*${num}\\b|\\bct-${num}\\b`, 'i').test(item.title || '')
-        );
-      } else if (subFilter.startsWith('a')) {
-        const num = parseInt(subFilter.replace('a', ''), 10);
-        rawItems = rawItems.filter(item => 
-          item.assignmentNumber === num || 
-          new RegExp(`\\bassign(ment)?\\s*${num}\\b|\\ba${num}\\b`, 'i').test(item.title || '')
-        );
-      }
-    }
+    const rawItems = [...categoryData[selectedCategory].items];
 
     return rawItems.sort((a, b) => {
       const scoreA = getTrimesterScore(a.trimesterCode || a.title);
@@ -241,7 +219,7 @@ export const CourseDetailPage: React.FC = () => {
       }
       return (b.uploadDate || '').localeCompare(a.uploadDate || '');
     });
-  }, [selectedCategory, categoryData, subFilter, sortOrder]);
+  }, [selectedCategory, categoryData, sortOrder]);
 
   if (!course) {
     return (
@@ -433,88 +411,6 @@ export const CourseDetailPage: React.FC = () => {
             </div>
 
           </div>
-
-          {/* Sub-Filter Tabs for Categories (Hidden for handnote and cheatsheet) */}
-          {selectedCategory && selectedCategory !== 'handnote' && selectedCategory !== 'cheatsheet' && categoryData[selectedCategory].items.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 pt-1 pb-1">
-              <span className="text-xs font-bold text-gray-500 dark:text-gray-400 mr-1">Filter:</span>
-
-              <button
-                onClick={() => setSubFilter('all')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  subFilter === 'all'
-                    ? 'bg-[#FF6600] text-white shadow-sm'
-                    : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 hover:border-orange-400'
-                }`}
-              >
-                All ({categoryData[selectedCategory].items.length})
-              </button>
-
-              {/* CT specific tabs: CT 1, 2, 3, 4 */}
-              {selectedCategory === 'ct' && (
-                <>
-                  {[1, 2, 3, 4].map(num => (
-                    <button
-                      key={`ct${num}`}
-                      onClick={() => setSubFilter(`ct${num}`)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                        subFilter === `ct${num}`
-                          ? 'bg-[#FF6600] text-white shadow-sm'
-                          : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 hover:border-orange-400'
-                      }`}
-                    >
-                      🎯 CT {num}
-                    </button>
-                  ))}
-                </>
-              )}
-
-              {/* Assignment specific tabs: Assign 1, 2, 3 */}
-              {selectedCategory === 'assignment' && (
-                <>
-                  {[1, 2, 3].map(num => (
-                    <button
-                      key={`a${num}`}
-                      onClick={() => setSubFilter(`a${num}`)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                        subFilter === `a${num}`
-                          ? 'bg-[#FF6600] text-white shadow-sm'
-                          : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 hover:border-orange-400'
-                      }`}
-                    >
-                      📋 Assign {num}
-                    </button>
-                  ))}
-                </>
-              )}
-
-              {/* Question and Solution tabs for Mid, Final, CT, Assignment */}
-              {(selectedCategory === 'mid' || selectedCategory === 'final' || selectedCategory === 'ct' || selectedCategory === 'assignment') && (
-                <>
-                  <button
-                    onClick={() => setSubFilter('question')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      subFilter === 'question'
-                        ? 'bg-[#FF6600] text-white shadow-sm'
-                        : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 hover:border-orange-400'
-                    }`}
-                  >
-                    ❓ Questions ({categoryData[selectedCategory].questionCount})
-                  </button>
-                  <button
-                    onClick={() => setSubFilter('solve')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      subFilter === 'solve'
-                        ? 'bg-[#FF6600] text-white shadow-sm'
-                        : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 hover:border-orange-400'
-                    }`}
-                  >
-                    💡 Solutions ({categoryData[selectedCategory].solutionCount})
-                  </button>
-                </>
-              )}
-            </div>
-          )}
 
           {/* Grid of Resource Cards */}
           {activeItems.length === 0 ? (
