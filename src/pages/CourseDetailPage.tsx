@@ -385,7 +385,7 @@ export const CourseDetailPage: React.FC = () => {
                   className={`group relative flex flex-col items-center justify-between text-center rounded-2xl p-5 sm:p-6 transition-all duration-200 ${
                     hasItems
                       ? 'bg-[#FFF9F5] dark:bg-[#201A16] border border-orange-200/70 dark:border-zinc-800/80 shadow-sm hover:shadow-xl hover:border-[#FF6600]/60 hover:-translate-y-1 cursor-pointer'
-                      : 'bg-[#FFF9F5]/40 dark:bg-[#201A16]/40 border border-orange-200/30 dark:border-zinc-800/40 opacity-65 dark:opacity-45 filter blur-[0.35px] grayscale-[20%] cursor-not-allowed select-none shadow-none pointer-events-auto'
+                      : 'bg-[#FFF9F5]/40 dark:bg-[#201A16]/40 border border-orange-200/30 dark:border-zinc-800/40 opacity-70 dark:opacity-50 filter blur-[0.15px] grayscale-[15%] cursor-not-allowed select-none shadow-none pointer-events-auto'
                   }`}
                   title={hasItems ? `Explore ${cat.title}` : `${cat.title} - 0 Available (Not clickable)`}
                 >
