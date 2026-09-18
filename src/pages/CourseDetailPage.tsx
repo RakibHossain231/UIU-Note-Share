@@ -300,17 +300,28 @@ export const CourseDetailPage: React.FC = () => {
           <span>Back to All Courses</span>
         </Link>
 
-        <button
-          onClick={() => togglePinCourse(course.id)}
-          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-            isPinned
-              ? 'bg-orange-500 text-white shadow-sm'
-              : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700'
-          }`}
-        >
-          <Bookmark className={`w-3.5 h-3.5 ${isPinned ? 'fill-white' : ''}`} />
-          <span>{isPinned ? 'Saved' : 'Pin Course'}</span>
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setRequestModalOpen(true)}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-orange-50 dark:bg-orange-950/40 text-[#FF6600] border border-orange-200 dark:border-orange-900/60 hover:bg-[#FF6600] hover:text-white transition-all shadow-sm"
+            title="Request missing notes or question solves for this course"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Request Notes</span>
+          </button>
+
+          <button
+            onClick={() => togglePinCourse(course.id)}
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              isPinned
+                ? 'bg-orange-500 text-white shadow-sm'
+                : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700'
+            }`}
+          >
+            <Bookmark className={`w-3.5 h-3.5 ${isPinned ? 'fill-white' : ''}`} />
+            <span>{isPinned ? 'Saved' : 'Pin Course'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Course Header Banner (Matches Screenshot 1 & 2) */}
@@ -360,33 +371,61 @@ export const CourseDetailPage: React.FC = () => {
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-5">
             {visibleCategories.map((key) => {
               const cat = categoryData[key];
+              const hasItems = cat.count > 0;
+
               return (
                 <button
                   key={key}
-                  onClick={() => setSelectedCategory(key)}
-                  className="group relative flex flex-col items-center justify-between text-center bg-[#FFF9F5] dark:bg-[#201A16] border border-orange-200/70 dark:border-zinc-800/80 rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-xl hover:border-[#FF6600]/60 transition-all duration-200 hover:-translate-y-1 cursor-pointer"
+                  disabled={!hasItems}
+                  onClick={() => {
+                    if (hasItems) {
+                      setSelectedCategory(key);
+                    }
+                  }}
+                  className={`group relative flex flex-col items-center justify-between text-center rounded-2xl p-5 sm:p-6 transition-all duration-200 ${
+                    hasItems
+                      ? 'bg-[#FFF9F5] dark:bg-[#201A16] border border-orange-200/70 dark:border-zinc-800/80 shadow-sm hover:shadow-xl hover:border-[#FF6600]/60 hover:-translate-y-1 cursor-pointer'
+                      : 'bg-[#FFF9F5]/40 dark:bg-[#201A16]/40 border border-orange-200/30 dark:border-zinc-800/40 opacity-60 dark:opacity-40 filter blur-[0.8px] grayscale-[35%] cursor-not-allowed select-none shadow-none pointer-events-auto'
+                  }`}
+                  title={hasItems ? `Explore ${cat.title}` : `${cat.title} - 0 Available (Not clickable)`}
                 >
                   {/* Top-Right Badge (e.g. MID, FINAL, NOTE, CT, ASSIGN) */}
-                  <span className="absolute top-3.5 right-3.5 px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-[#C2671A] text-white shadow-sm">
+                  <span className={`absolute top-3.5 right-3.5 px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider shadow-sm ${
+                    hasItems 
+                      ? 'bg-[#C2671A] text-white' 
+                      : 'bg-stone-400 dark:bg-stone-600 text-stone-100 dark:text-stone-300'
+                  }`}>
                     {cat.badge}
                   </span>
 
                   {/* Center Themed Scroll/Document Illustration */}
-                  <div className="my-4 transform group-hover:scale-105 transition-transform">
+                  <div className={`my-4 transition-transform ${hasItems ? 'transform group-hover:scale-105' : ''}`}>
                     <CategoryScrollIcon
                       type={cat.iconType}
-                      color="#C2671A"
+                      color={hasItems ? '#C2671A' : '#A8A29E'}
                       className="w-20 h-20 sm:w-24 sm:h-24"
                     />
                   </div>
 
-                  {/* Bottom Title & Total Count (User Request: "total count ta raikho") */}
-                  <div className="w-full pt-2 border-t border-orange-200/50 dark:border-zinc-800/80">
-                    <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white leading-snug">
+                  {/* Bottom Title & Total Count */}
+                  <div className={`w-full pt-2 border-t ${
+                    hasItems 
+                      ? 'border-orange-200/50 dark:border-zinc-800/80' 
+                      : 'border-stone-200/40 dark:border-zinc-800/40'
+                  }`}>
+                    <h3 className={`text-sm sm:text-base font-bold leading-snug ${
+                      hasItems 
+                        ? 'text-gray-900 dark:text-white' 
+                        : 'text-stone-600 dark:text-stone-400'
+                    }`}>
                       {cat.title}
                     </h3>
-                    <p className="mt-1 text-xs font-semibold text-[#C2671A] dark:text-orange-400">
-                      {cat.count > 0 ? `${cat.count} ${cat.count === 1 ? 'Item' : 'Items'} Available` : '0 Available (Request)'}
+                    <p className={`mt-1 text-xs font-semibold ${
+                      hasItems 
+                        ? 'text-[#C2671A] dark:text-orange-400' 
+                        : 'text-stone-400 dark:text-stone-500'
+                    }`}>
+                      {hasItems ? `${cat.count} ${cat.count === 1 ? 'Item' : 'Items'} Available` : '0 Available'}
                     </p>
                   </div>
                 </button>
