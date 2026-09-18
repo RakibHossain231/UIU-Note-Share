@@ -89,10 +89,10 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
   };
 
   const handleFileSelected = (file: File) => {
-    // Check max size: 1 GB
-    const maxSize = 1024 * 1024 * 1024;
+    // Supabase Free Tier single-file upload limit is 50MB
+    const maxSize = 50 * 1024 * 1024;
     if (file.size > maxSize) {
-      setErrorMessage('File size is too large (Max limit is 1 GB). For larger files, please choose the "Google Drive Link" option.');
+      setErrorMessage('Direct upload-এ ফাইলের সর্বোচ্চ সীমা 50 MB। ৫০ MB-র বেশি বড় ফাইলের জন্য (যেমন 100 MB, 200 MB বা ১ GB) অনুগ্রহ করে "Google Drive / Public Link" অপশনটি ব্যবহার করুন।');
       return;
     }
     setErrorMessage(null);
@@ -276,7 +276,7 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
                 <div className="flex items-start space-x-2.5 p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-800/40 text-blue-800 dark:text-blue-300 text-xs mb-5">
                   <Info className="w-4 h-4 shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
                   <span>
-                    Upload your clean PDF or document. The admin will review, verify and host it. Files up to 1 GB supported.
+                    Upload clean PDF or documents up to 50 MB. For larger files (up to 15 GB), please choose the <strong>Google Drive / Public Link</strong> option.
                   </span>
                 </div>
               )}
@@ -530,7 +530,7 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
                         Click to browse or drag & drop file here
                       </p>
                       <p className="text-[10px] text-gray-400 mt-1">
-                        PDF, Word, or Image files up to 1 GB
+                        PDF or Image files up to 50 MB (For larger files, use Google Drive Link)
                       </p>
                     </div>
                   )}
