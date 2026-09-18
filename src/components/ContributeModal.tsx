@@ -46,7 +46,6 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
   // Resource Info
   const [resourceType, setResourceType] = useState<ResourceType>('handnote');
   const [trimesterCode, setTrimesterCode] = useState('Fall 2024');
-  const [term, setTerm] = useState<'Mid' | 'Final' | 'CT' | 'Other'>('Mid');
   const [notes, setNotes] = useState('');
 
   // Link submission
@@ -90,10 +89,10 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
   };
 
   const handleFileSelected = (file: File) => {
-    // Check max size: 30MB
-    const maxSize = 30 * 1024 * 1024;
+    // Check max size: 1 GB
+    const maxSize = 1024 * 1024 * 1024;
     if (file.size > maxSize) {
-      setErrorMessage('File size is too large (Max limit is 30 MB). For larger files, please choose the "Google Drive Link" option.');
+      setErrorMessage('File size is too large (Max limit is 1 GB). For larger files, please choose the "Google Drive Link" option.');
       return;
     }
     setErrorMessage(null);
@@ -148,6 +147,11 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
     setIsSubmitting(true);
 
     try {
+      const derivedTerm = resourceType === 'question_mid' ? 'Mid'
+        : resourceType === 'question_final' ? 'Final'
+        : resourceType === 'ct' ? 'CT'
+        : undefined;
+
       const res = await submitContribution(
         {
           contributorName: contributorName.trim(),
@@ -160,7 +164,7 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
           courseTitle: finalTitle,
           resourceType,
           trimesterCode: trimesterCode.trim() || undefined,
-          term,
+          term: derivedTerm,
           submissionType,
           fileUrl: submissionType === 'link' ? driveLink.trim() : undefined,
           notes: notes.trim() || undefined
@@ -185,96 +189,97 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-[#1E1E1E] border border-gray-200 dark:border-zinc-800 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl relative my-8 animate-in fade-in zoom-in duration-200">
-        <button
-          onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-xl text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
-          aria-label="Close modal"
-        >
-          <X className="w-5 h-5" />
-        </button>
+    <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/75 backdrop-blur-md p-3 sm:p-4">
+      <div className="flex min-h-full items-start justify-center py-6 sm:py-10">
+        <div className="bg-white dark:bg-[#1E1E1E] border border-gray-200 dark:border-zinc-800 rounded-3xl max-w-xl w-full p-5 sm:p-7 shadow-2xl relative my-auto animate-in fade-in zoom-in-95 duration-200">
+          <button
+            onClick={onClose}
+            className="absolute top-5 right-5 p-2 rounded-xl text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            aria-label="Close modal"
+          >
+            <X className="w-5 h-5" />
+          </button>
 
-        {isSuccess ? (
-          <div className="py-12 text-center space-y-4">
-            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto animate-bounce">
-              <CheckCircle2 className="w-9 h-9" />
+          {isSuccess ? (
+            <div className="py-12 text-center space-y-4">
+              <div className="w-16 h-16 bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto animate-bounce">
+                <CheckCircle2 className="w-9 h-9" />
+              </div>
+              <h3 className="text-2xl font-black text-gray-900 dark:text-white">
+                Contribution Received! 🎉
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300 max-w-md mx-auto leading-relaxed">
+                Thank you, <span className="font-bold text-[#FF6600]">{contributorName}</span>! Your note has been submitted for admin verification. Once verified, your resource will be published and your name will be honored on the Wall of Contributors!
+              </p>
             </div>
-            <h3 className="text-2xl font-black text-gray-900 dark:text-white">
-              Contribution Received! 🎉
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-300 max-w-md mx-auto leading-relaxed">
-              Thank you, <span className="font-bold text-[#FF6600]">{contributorName}</span>! Your note has been submitted for admin verification. Once verified, your resource will be published and your name will be honored on the Wall of Contributors!
-            </p>
-          </div>
-        ) : (
-          <div>
-            {/* Header */}
-            <div className="flex items-center space-x-3 mb-5">
-              <div className="w-10 h-10 rounded-2xl bg-orange-100 text-[#FF6600] dark:bg-orange-950/60 flex items-center justify-center shadow-inner">
-                <Sparkles className="w-5 h-5" />
+          ) : (
+            <div>
+              {/* Header */}
+              <div className="flex items-center space-x-3 mb-5">
+                <div className="w-10 h-10 rounded-2xl bg-orange-100 text-[#FF6600] dark:bg-orange-950/60 flex items-center justify-center shadow-inner">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-extrabold text-gray-900 dark:text-white">
+                    Contribute Study Material
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Share handnotes, midterm/final solves, or CT solutions with fellow UIUians
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xl font-extrabold text-gray-900 dark:text-white">
-                  Contribute Study Material
-                </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Share handnotes, midterm/final solves, or CT solutions with fellow UIUians
-                </p>
-              </div>
-            </div>
 
-            {/* Submission Mode Tabs */}
-            <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 dark:bg-zinc-800/70 rounded-2xl mb-5">
-              <button
-                type="button"
-                onClick={() => {
-                  setSubmissionType('link');
-                  setErrorMessage(null);
-                }}
-                className={`flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${
-                  submissionType === 'link'
-                    ? 'bg-white dark:bg-zinc-900 text-[#FF6600] shadow-sm'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                }`}
-              >
-                <LinkIcon className="w-4 h-4" />
-                <span>Google Drive / Public Link</span>
-              </button>
+              {/* Submission Mode Tabs */}
+              <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 dark:bg-zinc-800/70 rounded-2xl mb-5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSubmissionType('link');
+                    setErrorMessage(null);
+                  }}
+                  className={`flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    submissionType === 'link'
+                      ? 'bg-white dark:bg-zinc-900 text-[#FF6600] shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  <LinkIcon className="w-4 h-4" />
+                  <span>Google Drive / Public Link</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setSubmissionType('file');
-                  setErrorMessage(null);
-                }}
-                className={`flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${
-                  submissionType === 'file'
-                    ? 'bg-white dark:bg-zinc-900 text-[#FF6600] shadow-sm'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                }`}
-              >
-                <UploadCloud className="w-4 h-4" />
-                <span>Direct File Upload (PDF)</span>
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSubmissionType('file');
+                    setErrorMessage(null);
+                  }}
+                  className={`flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    submissionType === 'file'
+                      ? 'bg-white dark:bg-zinc-900 text-[#FF6600] shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  <UploadCloud className="w-4 h-4" />
+                  <span>Direct File Upload (PDF)</span>
+                </button>
+              </div>
 
-            {/* Submission notice */}
-            {submissionType === 'link' ? (
-              <div className="flex items-start space-x-2.5 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40 text-amber-800 dark:text-amber-300 text-xs mb-5">
-                <Info className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
-                <span>
-                  Paste a viewable link (e.g. Google Drive, OneDrive). Please ensure link sharing is set to: <strong>&quot;Anyone with the link can view&quot;</strong>.
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-start space-x-2.5 p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-800/40 text-blue-800 dark:text-blue-300 text-xs mb-5">
-                <Info className="w-4 h-4 shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
-                <span>
-                  Upload your clean PDF or document. The admin will review, verify and host it. Files up to 30 MB supported.
-                </span>
-              </div>
-            )}
+              {/* Submission notice */}
+              {submissionType === 'link' ? (
+                <div className="flex items-start space-x-2.5 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40 text-amber-800 dark:text-amber-300 text-xs mb-5">
+                  <Info className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                  <span>
+                    Paste a viewable link (e.g. Google Drive, OneDrive). Please ensure link sharing is set to: <strong>&quot;Anyone with the link can view&quot;</strong>.
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-start space-x-2.5 p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-800/40 text-blue-800 dark:text-blue-300 text-xs mb-5">
+                  <Info className="w-4 h-4 shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
+                  <span>
+                    Upload your clean PDF or document. The admin will review, verify and host it. Files up to 1 GB supported.
+                  </span>
+                </div>
+              )}
 
             {errorMessage && (
               <div className="mb-4 p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-xs flex items-center space-x-2">
@@ -404,7 +409,6 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
                     <option value="question_final">Final Exam Question / Solve</option>
                     <option value="ct">Class Test (CT) Question / Solve</option>
                     <option value="assignment">Assignment Solution / Project</option>
-                    <option value="book">Book / Reference Material</option>
                   </select>
                 </div>
               </div>
@@ -439,35 +443,18 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
                 </div>
               )}
 
-              {/* Trimester & Term */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    Trimester
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Fall 2024, Spring 2024"
-                    value={trimesterCode}
-                    onChange={(e) => setTrimesterCode(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800/80 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white focus:outline-none focus:border-[#FF6600]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    Exam / Term
-                  </label>
-                  <select
-                    value={term}
-                    onChange={(e) => setTerm(e.target.value as any)}
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800/80 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white focus:outline-none focus:border-[#FF6600]"
-                  >
-                    <option value="Mid">Mid Term</option>
-                    <option value="Final">Final Term</option>
-                    <option value="CT">Class Test (CT)</option>
-                    <option value="Other">All / General</option>
-                  </select>
-                </div>
+              {/* Trimester */}
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  Trimester
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Fall 2024, Summer 2024"
+                  value={trimesterCode}
+                  onChange={(e) => setTrimesterCode(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800/80 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white focus:outline-none focus:border-[#FF6600]"
+                />
               </div>
 
               {/* Submission Input (Link or Direct File) */}
@@ -543,7 +530,7 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
                         Click to browse or drag & drop file here
                       </p>
                       <p className="text-[10px] text-gray-400 mt-1">
-                        PDF, Word, or Image files up to 30 MB
+                        PDF, Word, or Image files up to 1 GB
                       </p>
                     </div>
                   )}
@@ -597,6 +584,7 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
             </form>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

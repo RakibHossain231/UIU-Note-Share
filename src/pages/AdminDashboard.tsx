@@ -3076,12 +3076,13 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
 
       {/* APPROVAL MODAL FOR STUDENT CONTRIBUTIONS */}
       {approvingItem && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-[#1E1E1E] border border-gray-200 dark:border-zinc-800 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl relative my-8 animate-in fade-in">
-            <button
-              onClick={() => setApprovingItem(null)}
-              className="absolute top-5 right-5 p-2 rounded-xl text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer"
-            >
+        <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/75 backdrop-blur-md p-3 sm:p-4">
+          <div className="flex min-h-full items-start justify-center py-6 sm:py-10">
+            <div className="bg-white dark:bg-[#1E1E1E] border border-gray-200 dark:border-zinc-800 rounded-3xl max-w-xl w-full p-5 sm:p-7 shadow-2xl relative my-auto animate-in fade-in zoom-in-95 duration-200">
+              <button
+                onClick={() => setApprovingItem(null)}
+                className="absolute top-5 right-5 p-2 rounded-xl text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer"
+              >
               <X className="w-5 h-5" />
             </button>
 
@@ -3145,7 +3146,6 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
                     <option value="question_final">Final Exam Question / Solve</option>
                     <option value="ct">Class Test (CT) Question / Solve</option>
                     <option value="assignment">Assignment Solution / Project</option>
-                    <option value="book">Book / Reference Material</option>
                   </select>
                 </div>
               </div>
@@ -3266,6 +3266,7 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
               </div>
             </form>
           </div>
+        </div>
         </div>
       )}
 
