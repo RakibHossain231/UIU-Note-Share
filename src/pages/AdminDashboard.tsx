@@ -36,10 +36,12 @@ import {
   TrendingUp,
   Activity,
   Flame,
-  ArrowUpRight
+  ArrowUpRight,
+  Download,
+  X
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
-import { Course, ResourceItem, Contributor, ResourceType } from '../types';
+import { Course, ResourceItem, Contributor, ResourceType, PendingContribution } from '../types';
 import { CloudflareR2Service } from '../services/cloudflareR2Service';
 import { CreatorProfileData } from '../services/storageService';
 
@@ -56,7 +58,7 @@ export const COURSE_PRESET_COLORS = [
   { label: 'Ruby Red', value: '#EF4444' }
 ];
 
-type AdminTab = 'courses' | 'resources' | 'contributors' | 'requests' | 'analytics' | 'settings';
+type AdminTab = 'courses' | 'resources' | 'contributors' | 'contributions' | 'requests' | 'analytics' | 'settings';
 
 export const AdminDashboard: React.FC = () => {
   const { 
@@ -89,8 +91,28 @@ export const AdminDashboard: React.FC = () => {
     noteRequests,
     visitorCount,
     courseViews,
-    refreshAnalytics
+    refreshAnalytics,
+    pendingContributions,
+    approveContribution,
+    rejectContribution,
+    deleteStorageFile
   } = useData();
+
+  // Pending contribution approval modal state
+  const [approvingItem, setApprovingItem] = useState<PendingContribution | null>(null);
+  const [approvalTitle, setApprovalTitle] = useState('');
+  const [approvalCourseId, setApprovalCourseId] = useState('');
+  const [approvalResourceType, setApprovalResourceType] = useState<ResourceType>('handnote');
+  const [approvalTrimester, setApprovalTrimester] = useState('Fall 2024');
+  const [approvalTerm, setApprovalTerm] = useState('Mid');
+  const [approvalFileUrl, setApprovalFileUrl] = useState('');
+  const [approvalContribName, setApprovalContribName] = useState('');
+  const [approvalDept, setApprovalDept] = useState('CSE');
+  const [approvalBatch, setApprovalBatch] = useState('');
+  const [approvalProfileUrl, setApprovalProfileUrl] = useState('');
+  const [approvalSocialType, setApprovalSocialType] = useState<'facebook' | 'linkedin' | 'github' | 'email'>('facebook');
+  const [isApproving, setIsApproving] = useState(false);
+  const [isDeletingStorageId, setIsDeletingStorageId] = useState<string | null>(null);
 
   // 2-Step Login form state
   const [loginStep, setLoginStep] = useState<1 | 2>(1);
@@ -498,6 +520,96 @@ export const AdminDashboard: React.FC = () => {
     });
   };
 
+  // Contribution approval and rejection handlers
+  const openApprovalModal = (item: PendingContribution) => {
+    setApprovingItem(item);
+    let matchedCourseId = item.courseId;
+    if (!matchedCourseId) {
+      const found = courses.find(c => c.code.toLowerCase() === item.courseCode.toLowerCase());
+      matchedCourseId = found?.id || courses[0]?.id || '';
+    }
+    setApprovalCourseId(matchedCourseId);
+
+    const typeLabel = item.resourceType === 'question_mid' ? 'Midterm Solve'
+      : item.resourceType === 'question_final' ? 'Final Solve'
+      : item.resourceType === 'ct' ? 'CT Solve'
+      : item.resourceType === 'assignment' ? 'Assignment Solve'
+      : 'Lecture Handnote';
+
+    setApprovalTitle(`${item.courseCode} ${typeLabel} - ${item.term || ''} ${item.trimesterCode || ''}`.trim());
+    setApprovalResourceType(item.resourceType);
+    setApprovalTrimester(item.trimesterCode || 'Fall 2024');
+    setApprovalTerm(item.term || 'Mid');
+    setApprovalFileUrl(item.fileUrl);
+    setApprovalContribName(item.contributorName);
+    setApprovalDept(item.department || 'CSE');
+    setApprovalBatch(item.batch || 'UIUian');
+    setApprovalProfileUrl(item.profileUrl || '');
+    setApprovalSocialType(item.socialType || 'facebook');
+  };
+
+  const handleConfirmApproval = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!approvingItem) return;
+
+    if (!approvalTitle.trim() || !approvalFileUrl.trim()) {
+      alert('Please provide resource title and file/drive URL.');
+      return;
+    }
+
+    setIsApproving(true);
+    try {
+      const success = await approveContribution(approvingItem.id, {
+        finalFileUrl: approvalFileUrl.trim(),
+        title: approvalTitle.trim(),
+        contributorName: approvalContribName.trim(),
+        department: approvalDept,
+        batch: approvalBatch.trim() || undefined,
+        profileUrl: approvalProfileUrl.trim() || undefined,
+        socialType: approvalSocialType,
+        courseId: approvalCourseId,
+        resourceType: approvalResourceType,
+        trimesterCode: approvalTrimester.trim() || undefined,
+        term: approvalTerm.trim() || undefined,
+      });
+
+      if (success) {
+        setApprovingItem(null);
+      } else {
+        alert('Could not approve contribution. Please check your connection.');
+      }
+    } catch (err: any) {
+      alert(err?.message || 'Error approving contribution.');
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
+  const handleRejectClick = async (item: PendingContribution) => {
+    const ok = window.confirm(`Are you sure you want to reject this contribution from "${item.contributorName}"? If there is an uploaded file on Supabase, it will also be permanently deleted to save cloud storage.`);
+    if (!ok) return;
+
+    await rejectContribution(item.id);
+  };
+
+  const handleManualDeleteStorageFile = async (item: PendingContribution) => {
+    if (!item.storagePath) return;
+    const ok = window.confirm(`Are you sure you want to delete this file (${item.fileName || 'uploaded file'}) from Supabase cloud storage right now? Make sure you have downloaded it to your PC first.`);
+    if (!ok) return;
+
+    setIsDeletingStorageId(item.id);
+    try {
+      const success = await deleteStorageFile(item.storagePath);
+      if (success) {
+        alert('File successfully deleted from Supabase cloud storage! Your storage quota has been freed.');
+      } else {
+        alert('Could not delete file from storage or already removed.');
+      }
+    } finally {
+      setIsDeletingStorageId(null);
+    }
+  };
+
   // Save Settings
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
@@ -850,7 +962,7 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
       </div>
 
       {/* Metrics Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-6 gap-4">
         <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-2xl p-4">
           <span className="text-xs text-gray-500 font-medium">Total Courses</span>
           <div className="text-2xl font-black text-gray-900 dark:text-white mt-1">{courses.length}</div>
@@ -858,6 +970,12 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
         <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-2xl p-4">
           <span className="text-xs text-gray-500 font-medium">Total Notes & Solves</span>
           <div className="text-2xl font-black text-[#FF6600] mt-1">{resources.length}</div>
+        </div>
+        <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-2xl p-4">
+          <span className="text-xs text-gray-500 font-medium">Pending Notes</span>
+          <div className={`text-2xl font-black mt-1 ${pendingContributions.length > 0 ? 'text-rose-500 animate-pulse' : 'text-gray-900 dark:text-white'}`}>
+            {pendingContributions.length}
+          </div>
         </div>
         <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-2xl p-4">
           <span className="text-xs text-gray-500 font-medium">Total Visitors</span>
@@ -878,6 +996,7 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
         {[
           { key: 'courses', label: 'Course Directory', icon: BookOpen, count: courses.length },
           { key: 'resources', label: 'Notes & Exam Solves', icon: FileText, count: resources.length },
+          { key: 'contributions', label: 'Student Submissions', icon: Sparkles, count: pendingContributions.length },
           { key: 'contributors', label: 'Contributors', icon: Users, count: contributors.length },
           { key: 'requests', label: 'Student Requests', icon: Inbox, count: noteRequests.length },
           { key: 'analytics', label: 'Traffic & Course Analytics', icon: BarChart3 },
@@ -899,7 +1018,11 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
               <span>{tab.label}</span>
               {tab.count !== undefined && (
                 <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                  isActive ? 'bg-orange-100 dark:bg-orange-950/60 text-[#FF6600]' : 'bg-gray-100 dark:bg-zinc-800 text-gray-500'
+                  tab.key === 'contributions' && pendingContributions.length > 0
+                    ? 'bg-rose-500 text-white animate-pulse'
+                    : isActive 
+                      ? 'bg-orange-100 dark:bg-orange-950/60 text-[#FF6600]' 
+                      : 'bg-gray-100 dark:bg-zinc-800 text-gray-500'
                 }`}>
                   {tab.count}
                 </span>
@@ -1176,6 +1299,186 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* TAB: STUDENT SUBMISSIONS (PENDING CONTRIBUTIONS) */}
+      {activeTab === 'contributions' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+                <Sparkles className="w-5 h-5 text-[#FF6600]" />
+                <span>Student Submissions & Pending Notes</span>
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/60 text-[#FF6600] font-bold">
+                  {pendingContributions.length} Pending
+                </span>
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Review submitted notes, download PDFs to your PC, and publish to the live site.
+              </p>
+            </div>
+          </div>
+
+          {/* Storage Quota Auto-Cleanup Banner */}
+          <div className="p-4 rounded-2xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 text-amber-900 dark:text-amber-200 text-xs space-y-1.5 leading-relaxed">
+            <div className="flex items-center space-x-2 font-bold text-amber-800 dark:text-amber-300 text-sm">
+              <HardDrive className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>Free Cloud Storage Auto-Purge Guarantee</span>
+            </div>
+            <p>
+              When students upload direct files (PDFs), they are held in temporary cloud storage. Once you <strong>Approve</strong> or <strong>Reject</strong> a submission, the file is <strong>automatically deleted from cloud storage</strong> so your 1GB free quota stays 100% empty and never fills up! You can also click <em>&quot;Delete from Cloud&quot;</em> after downloading to free up space anytime.
+            </p>
+          </div>
+
+          {pendingContributions.length === 0 ? (
+            <div className="text-center py-16 bg-white dark:bg-[#1A1A1A] rounded-2xl border border-gray-200 dark:border-zinc-800 text-gray-400 text-xs space-y-2">
+              <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
+              <p className="font-semibold text-gray-700 dark:text-gray-300 text-sm">No Pending Submissions</p>
+              <p>When students submit notes via the Contributors page, they will appear here for review.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {pendingContributions.map((item) => (
+                <div
+                  key={item.id}
+                  className="p-5 rounded-2xl bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 shadow-sm space-y-4 hover:border-orange-500/40 transition-colors"
+                >
+                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="px-2.5 py-0.5 rounded-lg text-xs font-black bg-orange-100 text-[#FF6600] dark:bg-orange-950/60 dark:text-orange-400">
+                          {item.courseCode}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-300">
+                          {item.resourceType.toUpperCase().replace('_', ' ')}
+                        </span>
+                        {item.term && (
+                          <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
+                            {item.term} Term
+                          </span>
+                        )}
+                        {item.trimesterCode && (
+                          <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400">
+                            {item.trimesterCode}
+                          </span>
+                        )}
+                        {item.submissionType === 'file' ? (
+                          <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400">
+                            📁 Direct File ({item.fileSize ? `${(item.fileSize / (1024 * 1024)).toFixed(1)} MB` : 'PDF'})
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-sky-100 dark:bg-sky-950/50 text-sky-700 dark:text-sky-400">
+                            🔗 Drive / Public Link
+                          </span>
+                        )}
+                      </div>
+
+                      <h4 className="text-base font-bold text-gray-900 dark:text-white">
+                        {item.courseTitle || item.courseCode}
+                      </h4>
+
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+                        <span className="font-semibold text-gray-900 dark:text-white">Contributor:</span>
+                        <span className="font-bold text-[#FF6600]">{item.contributorName}</span>
+                        <span>•</span>
+                        <span>{item.department}</span>
+                        <span>•</span>
+                        <span>{item.batch || 'UIUian'}</span>
+                        {item.profileUrl && (
+                          <>
+                            <span>•</span>
+                            <a
+                              href={item.profileUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-blue-500 hover:underline inline-flex items-center space-x-1"
+                            >
+                              <span>{item.socialType || 'Profile'}</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </>
+                        )}
+                      </div>
+
+                      {item.notes && (
+                        <div className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-zinc-800/60 p-2.5 rounded-xl border border-gray-100 dark:border-zinc-800">
+                          <span className="font-semibold text-gray-700 dark:text-gray-300">Student Notes: </span>
+                          {item.notes}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="text-right text-[11px] text-gray-400 shrink-0">
+                      Submitted: {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'Recent'}
+                    </div>
+                  </div>
+
+                  {/* Actions Bar */}
+                  <div className="pt-3 border-t border-gray-100 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {item.submissionType === 'file' ? (
+                        <>
+                          <a
+                            href={item.fileUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            download={item.fileName || true}
+                            className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-sm"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Download File ({item.fileName || 'PDF'})</span>
+                          </a>
+
+                          {item.storagePath && (
+                            <button
+                              type="button"
+                              onClick={() => handleManualDeleteStorageFile(item)}
+                              disabled={isDeletingStorageId === item.id}
+                              className="flex items-center space-x-1 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 transition-colors cursor-pointer"
+                              title="Delete from Supabase storage now to free 1GB quota"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Free Cloud Space</span>
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <a
+                          href={item.fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white transition-colors shadow-sm"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>Open Drive Link</span>
+                        </a>
+                      )}
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => handleRejectClick(item)}
+                        className="px-3.5 py-2 rounded-xl text-xs font-bold text-gray-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+                      >
+                        Reject & Delete
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => openApprovalModal(item)}
+                        className="flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-[#FF6600] hover:bg-orange-600 text-white transition-colors shadow-sm cursor-pointer"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Approve & Publish</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -1809,7 +2112,7 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
                 <input
                   type="password"
                   maxLength={6}
-                  placeholder="6 digits (e.g. 564566)"
+                  placeholder="6 digits (e.g. 123456)"
                   value={editNewPin}
                   onChange={(e) => setEditNewPin(e.target.value.replace(/\D/g, ''))}
                   className="w-full px-3.5 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white font-mono tracking-widest"
@@ -2764,6 +3067,201 @@ create policy "Enable all for creator_profile" on public.creator_profile for all
                   className="px-5 py-2 rounded-xl bg-[#FF6600] text-white font-bold hover:bg-orange-600 transition-colors shadow"
                 >
                   Save Resource Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* APPROVAL MODAL FOR STUDENT CONTRIBUTIONS */}
+      {approvingItem && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-[#1E1E1E] border border-gray-200 dark:border-zinc-800 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl relative my-8 animate-in fade-in">
+            <button
+              onClick={() => setApprovingItem(null)}
+              className="absolute top-5 right-5 p-2 rounded-xl text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center space-x-2.5 mb-5">
+              <div className="w-10 h-10 rounded-2xl bg-orange-100 dark:bg-orange-950/60 text-[#FF6600] flex items-center justify-center">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                  Approve & Publish Resource
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Verify details, attach your permanent Drive URL, and publish to the live site.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleConfirmApproval} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  Resource Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={approvalTitle}
+                  onChange={(e) => setApprovalTitle(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white focus:outline-none focus:border-[#FF6600]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    Target Course *
+                  </label>
+                  <select
+                    value={approvalCourseId}
+                    onChange={(e) => setApprovalCourseId(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white focus:outline-none focus:border-[#FF6600]"
+                  >
+                    {courses.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.code} — {c.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    Resource Type *
+                  </label>
+                  <select
+                    value={approvalResourceType}
+                    onChange={(e) => setApprovalResourceType(e.target.value as ResourceType)}
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white focus:outline-none focus:border-[#FF6600]"
+                  >
+                    <option value="handnote">Lecture Handnotes</option>
+                    <option value="question_mid">Mid Term Question / Solve</option>
+                    <option value="question_final">Final Exam Question / Solve</option>
+                    <option value="ct">Class Test (CT) Question / Solve</option>
+                    <option value="assignment">Assignment Solution / Project</option>
+                    <option value="book">Book / Reference Material</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    Trimester
+                  </label>
+                  <input
+                    type="text"
+                    value={approvalTrimester}
+                    onChange={(e) => setApprovalTrimester(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white focus:outline-none focus:border-[#FF6600]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    Term / Exam
+                  </label>
+                  <input
+                    type="text"
+                    value={approvalTerm}
+                    onChange={(e) => setApprovalTerm(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white focus:outline-none focus:border-[#FF6600]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  Permanent File / Drive URL *
+                </label>
+                <input
+                  type="url"
+                  required
+                  value={approvalFileUrl}
+                  onChange={(e) => setApprovalFileUrl(e.target.value)}
+                  placeholder="Paste your organized Google Drive share link"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white focus:outline-none focus:border-[#FF6600]"
+                />
+                <p className="text-[10px] text-gray-400 mt-1">
+                  You can keep the student&apos;s link or upload the file to your own Google Drive and paste the link here.
+                </p>
+              </div>
+
+              {/* Contributor Credit info */}
+              <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-zinc-900/80 border border-gray-200 dark:border-zinc-800 space-y-2">
+                <span className="text-xs font-bold text-gray-700 dark:text-gray-300 block">
+                  Contributor Credit Information
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    placeholder="Name"
+                    value={approvalContribName}
+                    onChange={(e) => setApprovalContribName(e.target.value)}
+                    className="px-2.5 py-1.5 text-xs rounded-lg bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  />
+                  <select
+                    value={approvalDept}
+                    onChange={(e) => setApprovalDept(e.target.value)}
+                    className="px-2.5 py-1.5 text-xs rounded-lg bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  >
+                    {departments.map(d => (
+                      <option key={d.code} value={d.code}>{d.name} ({d.code})</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <input
+                    type="text"
+                    placeholder="Batch (e.g. 231)"
+                    value={approvalBatch}
+                    onChange={(e) => setApprovalBatch(e.target.value)}
+                    className="px-2.5 py-1.5 text-xs rounded-lg bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  />
+                  <select
+                    value={approvalSocialType}
+                    onChange={(e) => setApprovalSocialType(e.target.value as any)}
+                    className="px-2.5 py-1.5 text-xs rounded-lg bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  >
+                    <option value="facebook">Facebook</option>
+                    <option value="linkedin">LinkedIn</option>
+                    <option value="github">GitHub</option>
+                    <option value="email">Email</option>
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="Profile URL"
+                    value={approvalProfileUrl}
+                    onChange={(e) => setApprovalProfileUrl(e.target.value)}
+                    className="px-2.5 py-1.5 text-xs rounded-lg bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Auto Cleanup Notice */}
+              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-800 dark:text-emerald-300">
+                ✅ <strong>Storage Auto-Purge:</strong> Approving this will automatically delete the temporary file from Supabase Storage so your 1GB free storage remains 100% empty!
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setApprovingItem(null)}
+                  className="px-4 py-2 text-xs font-semibold text-gray-500 hover:text-gray-900 dark:hover:text-white cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isApproving}
+                  className="flex items-center space-x-1.5 px-5 py-2.5 rounded-xl bg-[#FF6600] hover:bg-orange-600 text-white text-xs font-bold shadow transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {isApproving ? 'Publishing & Purging Storage...' : 'Confirm & Publish Resource'}
                 </button>
               </div>
             </form>

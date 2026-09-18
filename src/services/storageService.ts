@@ -1,4 +1,4 @@
-import { Course, ResourceItem, Contributor, NoteRequest, Department, AdminCredentials } from '../types';
+import { Course, ResourceItem, Contributor, NoteRequest, Department, AdminCredentials, PendingContribution } from '../types';
 import { INITIAL_COURSES } from '../data/courses';
 import { INITIAL_RESOURCES, INITIAL_CONTRIBUTORS } from '../data/seedResources';
 import { INITIAL_DEPARTMENTS, DepartmentInfo } from '../data/departments';
@@ -10,6 +10,7 @@ const STORAGE_KEYS = {
   DEPARTMENTS: 'uiu_departments_v2',
   PINNED_COURSES: 'uiu_pinned_courses_v1',
   NOTE_REQUESTS: 'uiu_note_requests_v2',
+  PENDING_CONTRIBUTIONS: 'uiu_pending_contributions_v1',
   R2_CONFIG: 'uiu_r2_config_v1',
   SUPABASE_CONFIG: 'uiu_supabase_config_v1',
   ADMIN_AUTH: 'uiu_admin_auth_v1',
@@ -249,6 +250,32 @@ export const StorageService = {
     const list = this.getNoteRequests();
     list.unshift(req);
     this.saveNoteRequests(list);
+  },
+
+  // Pending Contributions
+  getPendingContributions(): PendingContribution[] {
+    const raw = localStorage.getItem(STORAGE_KEYS.PENDING_CONTRIBUTIONS);
+    if (!raw) return [];
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  },
+
+  savePendingContributions(contributions: PendingContribution[]): void {
+    localStorage.setItem(STORAGE_KEYS.PENDING_CONTRIBUTIONS, JSON.stringify(contributions));
+  },
+
+  addPendingContribution(item: PendingContribution): void {
+    const list = this.getPendingContributions();
+    list.unshift(item);
+    this.savePendingContributions(list);
+  },
+
+  removePendingContribution(id: string): void {
+    const list = this.getPendingContributions().filter(c => c.id !== id);
+    this.savePendingContributions(list);
   },
 
   // Admin Auth State & Security

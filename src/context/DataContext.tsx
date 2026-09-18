@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { Course, ResourceItem, Contributor, NoteRequest, Department, AdminCredentials } from '../types';
+import { Course, ResourceItem, Contributor, NoteRequest, Department, AdminCredentials, PendingContribution, ResourceType } from '../types';
 import { StorageService, CreatorProfileData } from '../services/storageService';
 import { SupabaseService } from '../services/supabaseService';
 import { checkSupabaseConnection } from '../services/supabaseClient';
@@ -59,6 +59,11 @@ interface DataContextType {
   courseViews: Record<string, number>;
   recordCourseView: (courseId: string) => Promise<void>;
   refreshAnalytics: () => Promise<void>;
+  pendingContributions: PendingContribution[];
+  submitContribution: (data: Omit<PendingContribution, 'id' | 'createdAt' | 'status' | 'fileUrl'> & { fileUrl?: string }, file?: File) => Promise<{ success: boolean; error?: string }>;
+  approveContribution: (id: string, options: { finalFileUrl: string; title: string; contributorName: string; department: string; batch?: string; profileUrl?: string; socialType?: 'facebook' | 'linkedin' | 'github' | 'email'; courseId: string; resourceType: ResourceType; trimesterCode?: string; term?: string }) => Promise<boolean>;
+  rejectContribution: (id: string) => Promise<boolean>;
+  deleteStorageFile: (storagePath: string) => Promise<boolean>;
 }
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -73,6 +78,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [pinnedCourseIds, setPinnedCourseIds] = useState<string[]>([]);
   const [noteRequests, setNoteRequests] = useState<NoteRequest[]>([]);
+  const [pendingContributions, setPendingContributions] = useState<PendingContribution[]>(() => StorageService.getPendingContributions());
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(false);
   const [supabaseStatus, setSupabaseStatus] = useState<string>('Checking connection...');
@@ -87,6 +93,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setDepartments(StorageService.getDepartments());
     setPinnedCourseIds(StorageService.getPinnedCourseIds());
     setNoteRequests(StorageService.getNoteRequests());
+    setPendingContributions(StorageService.getPendingContributions());
     setIsAdmin(StorageService.isAdminLoggedIn());
     setCreatorProfile(StorageService.getCreatorProfile());
     setCourseViews(StorageService.getCourseViews());
@@ -99,6 +106,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Sync cloud course views
     SupabaseService.getCourseViews().then((views) => {
       if (views) setCourseViews(views);
+    });
+
+    // Sync cloud pending contributions
+    SupabaseService.getPendingContributions().then((contribs) => {
+      if (contribs) setPendingContributions(contribs);
     });
 
     // Real-time polling: sync latest visitor count across all users every 8 seconds
@@ -174,6 +186,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const cloudViews = await SupabaseService.getCourseViews();
       if (cloudViews) {
         setCourseViews(cloudViews);
+      }
+
+      // 8. Sync Pending Contributions
+      const cloudContributions = await SupabaseService.getPendingContributions();
+      if (cloudContributions) {
+        setPendingContributions(cloudContributions);
+        StorageService.savePendingContributions(cloudContributions);
       }
     } catch (err: any) {
       console.warn('Cloud sync background error:', err);
@@ -267,6 +286,159 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     StorageService.addNoteRequest(newReq);
     setNoteRequests(StorageService.getNoteRequests());
     await SupabaseService.insertNoteRequest(newReq);
+  };
+
+  const handleSubmitContribution = async (
+    data: Omit<PendingContribution, 'id' | 'createdAt' | 'status' | 'fileUrl'> & { fileUrl?: string },
+    file?: File
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      let finalFileUrl = data.fileUrl || '';
+      let storagePath = '';
+      let fileName = data.fileName;
+      let fileSize = data.fileSize;
+
+      if (data.submissionType === 'file' && file) {
+        const uploadRes = await SupabaseService.uploadContributionFile(file);
+        if (!uploadRes) {
+          return { success: false, error: 'Could not upload file to storage. Please try using a Google Drive link or try again.' };
+        }
+        finalFileUrl = uploadRes.publicUrl;
+        storagePath = uploadRes.storagePath;
+        fileName = file.name;
+        fileSize = file.size;
+      }
+
+      if (!finalFileUrl) {
+        return { success: false, error: 'Please provide a valid file or link.' };
+      }
+
+      const newContrib: PendingContribution = {
+        id: `contrib_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        contributorName: data.contributorName,
+        department: data.department,
+        batch: data.batch,
+        profileUrl: data.profileUrl,
+        socialType: data.socialType || 'facebook',
+        courseId: data.courseId,
+        courseCode: data.courseCode,
+        courseTitle: data.courseTitle,
+        resourceType: data.resourceType,
+        trimesterCode: data.trimesterCode,
+        term: data.term,
+        submissionType: data.submissionType,
+        fileUrl: finalFileUrl,
+        storagePath,
+        fileName,
+        fileSize,
+        notes: data.notes,
+        createdAt: new Date().toISOString(),
+        status: 'pending'
+      };
+
+      const ok = await SupabaseService.submitPendingContribution(newContrib);
+      if (ok) {
+        setPendingContributions(prev => [newContrib, ...prev]);
+        return { success: true };
+      }
+      return { success: false, error: 'Failed to submit contribution.' };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Submission error.' };
+    }
+  };
+
+  const handleApproveContribution = async (
+    id: string,
+    options: {
+      finalFileUrl: string;
+      title: string;
+      contributorName: string;
+      department: string;
+      batch?: string;
+      profileUrl?: string;
+      socialType?: 'facebook' | 'linkedin' | 'github' | 'email';
+      courseId: string;
+      resourceType: ResourceType;
+      trimesterCode?: string;
+      term?: string;
+    }
+  ): Promise<boolean> => {
+    try {
+      const item = pendingContributions.find(c => c.id === id);
+      if (!item) return false;
+
+      // 1. Check or create Contributor
+      let contributorObj = contributors.find(
+        c => c.name.toLowerCase().trim() === options.contributorName.toLowerCase().trim()
+      );
+
+      if (!contributorObj) {
+        const newContributor: Contributor = {
+          id: `contrib_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          name: options.contributorName,
+          department: options.department as any,
+          batch: options.batch || 'UIUian',
+          socialUrl: options.profileUrl || '',
+          socialType: options.socialType || 'facebook',
+          contributionsCount: 1
+        };
+        await handleAddContributor(newContributor);
+        contributorObj = newContributor;
+      } else {
+        // Increment existing contributor's count
+        await handleUpdateContributor({
+          ...contributorObj,
+          contributionsCount: (contributorObj.contributionsCount || 0) + 1
+        });
+      }
+
+      // 2. Create and add the verified Resource
+      const course = courses.find(c => c.id === options.courseId);
+      const targetDept = (course?.department || options.department || 'CSE') as any;
+
+      const newResourceItem: ResourceItem = {
+        id: `res_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        courseId: options.courseId,
+        department: targetDept,
+        type: options.resourceType,
+        title: options.title,
+        storageType: options.finalFileUrl.includes('drive.google.com') ? 'drive' : 'direct_url',
+        fileUrl: options.finalFileUrl,
+        trimesterCode: options.trimesterCode || 'Fall 2024',
+        term: options.term || 'Mid',
+        uploadDate: new Date().toISOString().split('T')[0],
+        contributor: contributorObj
+      };
+      await handleAddResource(newResourceItem);
+
+      // 3. Delete from Pending & auto-delete temporary file from Supabase storage (AUTO CLEANUP TO KEEP 1GB FREE!)
+      await SupabaseService.deletePendingContribution(id, item.storagePath);
+      setPendingContributions(prev => prev.filter(c => c.id !== id));
+
+      return true;
+    } catch (err) {
+      console.error('Error approving contribution:', err);
+      return false;
+    }
+  };
+
+  const handleRejectContribution = async (id: string): Promise<boolean> => {
+    try {
+      const item = pendingContributions.find(c => c.id === id);
+      if (!item) return false;
+
+      // Delete from Pending & auto-delete temporary file from Supabase storage
+      await SupabaseService.deletePendingContribution(id, item.storagePath);
+      setPendingContributions(prev => prev.filter(c => c.id !== id));
+      return true;
+    } catch (err) {
+      console.error('Error rejecting contribution:', err);
+      return false;
+    }
+  };
+
+  const handleDeleteStorageFile = async (storagePath: string): Promise<boolean> => {
+    return await SupabaseService.deleteStorageFile(storagePath);
   };
 
   const [adminEmail, setAdminEmail] = useState<string>(() => StorageService.getAdminCredentials().email);
@@ -450,6 +622,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         courseViews,
         recordCourseView: handleRecordCourseView,
         refreshAnalytics: handleRefreshAnalytics,
+        pendingContributions,
+        submitContribution: handleSubmitContribution,
+        approveContribution: handleApproveContribution,
+        rejectContribution: handleRejectContribution,
+        deleteStorageFile: handleDeleteStorageFile,
       }}
     >
       {children}

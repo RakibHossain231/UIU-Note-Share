@@ -14,10 +14,12 @@ import {
 import { FacebookIcon, LinkedinIcon, GithubIcon } from '../components/SocialIcons';
 import { useData } from '../context/DataContext';
 import { DepartmentFilter } from '../components/DepartmentFilter';
+import { ContributeModal } from '../components/ContributeModal';
 
 export const ContributorsPage: React.FC = () => {
   const { contributors, resources, selectedDepartment, setSelectedDepartment } = useData();
   const [copiedLink, setCopiedLink] = useState(false);
+  const [isContributeModalOpen, setIsContributeModalOpen] = useState(false);
 
   // Filter contributors by selected department
   const filteredContributors = useMemo(() => {
@@ -69,6 +71,16 @@ export const ContributorsPage: React.FC = () => {
             <FileCheck2 className="w-3.5 h-3.5 text-emerald-500" />
             <span>Verified Student Solves</span>
           </span>
+        </div>
+
+        <div className="pt-3">
+          <button
+            onClick={() => setIsContributeModalOpen(true)}
+            className="inline-flex items-center space-x-2 px-6 py-3 rounded-2xl bg-[#FF6600] hover:bg-orange-600 text-white font-bold text-xs sm:text-sm shadow-lg shadow-orange-500/25 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span>Submit Your Notes or Solves</span>
+          </button>
         </div>
       </section>
 
@@ -168,17 +180,17 @@ export const ContributorsPage: React.FC = () => {
           </p>
 
           <div className="flex flex-wrap items-center gap-3 pt-2">
-            <a
-              href="mailto:contribute@uiunoteshare.com?subject=Note%20Contribution"
-              className="flex items-center space-x-2 px-5 py-3 rounded-2xl bg-white text-orange-600 font-bold text-sm shadow-md hover:bg-orange-50 transition-colors"
+            <button
+              onClick={() => setIsContributeModalOpen(true)}
+              className="flex items-center space-x-2 px-6 py-3 rounded-2xl bg-white text-orange-600 font-bold text-sm shadow-md hover:bg-orange-50 transition-all hover:scale-105 active:scale-95 cursor-pointer"
             >
               <Send className="w-4 h-4" />
-              <span>Email Your Notes / Drive Link</span>
-            </a>
+              <span>Submit Notes / Direct PDF</span>
+            </button>
 
             <button
               onClick={handleShareLink}
-              className="flex items-center space-x-2 px-5 py-3 rounded-2xl bg-black/20 hover:bg-black/30 text-white font-semibold text-sm backdrop-blur-md border border-white/20 transition-colors"
+              className="flex items-center space-x-2 px-5 py-3 rounded-2xl bg-black/20 hover:bg-black/30 text-white font-semibold text-sm backdrop-blur-md border border-white/20 transition-colors cursor-pointer"
             >
               <ExternalLink className="w-4 h-4" />
               <span>{copiedLink ? 'Link Copied!' : 'Share This Page'}</span>
@@ -186,6 +198,12 @@ export const ContributorsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Contribution Submission Modal */}
+      <ContributeModal
+        isOpen={isContributeModalOpen}
+        onClose={() => setIsContributeModalOpen(false)}
+      />
 
     </div>
   );

@@ -73,6 +73,29 @@ export interface NoteRequest {
   status: 'pending' | 'fulfilled';
 }
 
+export interface PendingContribution {
+  id: string;
+  contributorName: string;
+  department: string;
+  batch?: string;
+  profileUrl?: string;
+  socialType?: 'facebook' | 'linkedin' | 'github' | 'email';
+  courseId?: string;
+  courseCode: string;
+  courseTitle: string;
+  resourceType: ResourceType;
+  trimesterCode?: string;
+  term?: string;
+  submissionType: 'link' | 'file';
+  fileUrl: string; // Link or Supabase storage URL
+  storagePath?: string; // Path in bucket for auto-deletion
+  fileName?: string;
+  fileSize?: number;
+  notes?: string;
+  createdAt: string;
+  status: 'pending' | 'approved' | 'rejected';
+}
+
 export interface CloudflareR2Config {
   accountId: string;
   accessKeyId: string;

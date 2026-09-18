@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { StorageService } from './storageService';
-import { Course, ResourceItem, Contributor, NoteRequest } from '../types';
+import { Course, ResourceItem, Contributor, NoteRequest, PendingContribution } from '../types';
 
 export interface CreatorProfile {
   name: string;
@@ -460,6 +460,158 @@ export const SupabaseService = {
     } catch (err) {
       console.warn('Course view record error:', err);
       return StorageService.incrementCourseView(courseId);
+    }
+  },
+
+  // PENDING CONTRIBUTIONS (Cloud Sync & File Management)
+  async getPendingContributions(): Promise<PendingContribution[]> {
+    const local = StorageService.getPendingContributions();
+    if (!supabase || !isSupabaseConfigured()) return local;
+
+    try {
+      const { data, error } = await supabase
+        .from('creator_profile')
+        .select('bio')
+        .eq('id', 'pending_contributions')
+        .maybeSingle();
+
+      if (!error && data?.bio) {
+        try {
+          const parsed = JSON.parse(data.bio);
+          if (Array.isArray(parsed)) {
+            StorageService.savePendingContributions(parsed);
+            return parsed;
+          }
+        } catch {}
+      }
+
+      return local;
+    } catch {
+      return local;
+    }
+  },
+
+  async submitPendingContribution(contribution: PendingContribution): Promise<boolean> {
+    try {
+      StorageService.addPendingContribution(contribution);
+      const all = StorageService.getPendingContributions();
+
+      if (supabase && isSupabaseConfigured()) {
+        await supabase
+          .from('creator_profile')
+          .upsert({
+            id: 'pending_contributions',
+            name: 'Pending Contributions',
+            department: 'System',
+            batch: 'v1',
+            bio: JSON.stringify(all),
+            updated_at: new Date().toISOString()
+          });
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Submit contribution error:', err);
+      return false;
+    }
+  },
+
+  async deletePendingContribution(id: string, storagePath?: string): Promise<boolean> {
+    try {
+      // 1. If there's an attached file in Supabase storage, delete it immediately to free up quota!
+      if (storagePath) {
+        await this.deleteStorageFile(storagePath);
+      }
+
+      // 2. Remove from local storage
+      StorageService.removePendingContribution(id);
+      const remaining = StorageService.getPendingContributions();
+
+      // 3. Sync to Supabase cloud
+      if (supabase && isSupabaseConfigured()) {
+        await supabase
+          .from('creator_profile')
+          .upsert({
+            id: 'pending_contributions',
+            name: 'Pending Contributions',
+            department: 'System',
+            batch: 'v1',
+            bio: JSON.stringify(remaining),
+            updated_at: new Date().toISOString()
+          });
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Delete contribution error:', err);
+      return false;
+    }
+  },
+
+  // Direct File Upload to Supabase Storage Bucket
+  async uploadContributionFile(file: File): Promise<{ publicUrl: string; storagePath: string } | null> {
+    if (!supabase || !isSupabaseConfigured()) {
+      // Fallback: create an object URL for local testing
+      const objectUrl = URL.createObjectURL(file);
+      return { publicUrl: objectUrl, storagePath: '' };
+    }
+
+    try {
+      const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const uniquePath = `${Date.now()}_${cleanName}`;
+
+      // Try 'contributions' bucket first
+      let bucket = 'contributions';
+      let { error: uploadErr } = await supabase.storage.from(bucket).upload(uniquePath, file, {
+        cacheControl: '3600',
+        upsert: true
+      });
+
+      // If 'contributions' bucket not found, fallback to 'notes' or try creating
+      if (uploadErr) {
+        console.warn(`Bucket '${bucket}' upload failed (${uploadErr.message}), trying 'notes'...`);
+        bucket = 'notes';
+        const notesRes = await supabase.storage.from(bucket).upload(uniquePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+        if (notesRes.error) {
+          console.error('Supabase storage upload failed:', notesRes.error);
+          return null;
+        }
+      }
+
+      const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(uniquePath);
+      return {
+        publicUrl,
+        storagePath: `${bucket}/${uniquePath}`
+      };
+    } catch (err) {
+      console.error('Error uploading file to storage:', err);
+      return null;
+    }
+  },
+
+  // Delete file from Supabase Storage (Keeps 1GB Quota 100% Free!)
+  async deleteStorageFile(storagePath: string): Promise<boolean> {
+    if (!supabase || !isSupabaseConfigured() || !storagePath) return false;
+
+    try {
+      const parts = storagePath.split('/');
+      const bucket = parts[0] || 'contributions';
+      const fileName = parts.slice(1).join('/');
+
+      if (!fileName) return false;
+
+      const { error } = await supabase.storage.from(bucket).remove([fileName]);
+      if (error) {
+        console.warn(`Could not delete storage file ${fileName} from ${bucket}:`, error);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.warn('Error deleting storage file:', err);
+      return false;
     }
   }
 };
