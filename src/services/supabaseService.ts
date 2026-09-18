@@ -549,7 +549,7 @@ export const SupabaseService = {
   },
 
   // Direct File Upload to Supabase Storage Bucket
-  async uploadContributionFile(file: File): Promise<{ publicUrl: string; storagePath: string } | null> {
+  async uploadContributionFile(file: File): Promise<{ publicUrl: string; storagePath: string; error?: string } | null> {
     if (!supabase || !isSupabaseConfigured()) {
       // Fallback: create an object URL for local testing
       const objectUrl = URL.createObjectURL(file);
@@ -567,7 +567,7 @@ export const SupabaseService = {
         upsert: true
       });
 
-      // If 'contributions' bucket not found, fallback to 'notes' or try creating
+      // If 'contributions' bucket not found, fallback to 'notes'
       if (uploadErr) {
         console.warn(`Bucket '${bucket}' upload failed (${uploadErr.message}), trying 'notes'...`);
         bucket = 'notes';
@@ -575,9 +575,36 @@ export const SupabaseService = {
           cacheControl: '3600',
           upsert: true
         });
+
         if (notesRes.error) {
           console.error('Supabase storage upload failed:', notesRes.error);
-          return null;
+          const rawErr = notesRes.error.message || uploadErr.message || '';
+          if (rawErr.toLowerCase().includes('bucket not found') || rawErr.toLowerCase().includes('nosuchbucket')) {
+            return {
+              publicUrl: '',
+              storagePath: '',
+              error: 'Supabase Storage-এ "contributions" নামের Bucket তৈরি করা নেই। Supabase ড্যাশবোর্ডে গিয়ে Storage bucket তৈরি করুন অথবা Google Drive Link দিন।'
+            };
+          }
+          if (rawErr.toLowerCase().includes('row-level security') || rawErr.toLowerCase().includes('accessdenied') || rawErr.toLowerCase().includes('violates')) {
+            return {
+              publicUrl: '',
+              storagePath: '',
+              error: 'Supabase Storage upload permission নেই। Storage Bucket Policy সেটআপ করুন অথবা Google Drive Link দিন।'
+            };
+          }
+          if (rawErr.toLowerCase().includes('too large') || rawErr.toLowerCase().includes('exceeded') || rawErr.toLowerCase().includes('413')) {
+            return {
+              publicUrl: '',
+              storagePath: '',
+              error: 'ফাইলের সাইজ Supabase-এর ফ্রি লিমিট (50 MB) অতিক্রম করেছে। বড় ফাইলের জন্য অনুগ্রহ করে Google Drive Link দিন।'
+            };
+          }
+          return {
+            publicUrl: '',
+            storagePath: '',
+            error: `Upload error: ${rawErr}. আপনি চাইলে সরাসরি Google Drive Link দিতে পারেন।`
+          };
         }
       }
 
@@ -586,9 +613,13 @@ export const SupabaseService = {
         publicUrl,
         storagePath: `${bucket}/${uniquePath}`
       };
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error uploading file to storage:', err);
-      return null;
+      return {
+        publicUrl: '',
+        storagePath: '',
+        error: err?.message || 'Error uploading file to storage.'
+      };
     }
   },
 

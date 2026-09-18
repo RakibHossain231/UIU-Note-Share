@@ -712,7 +712,16 @@ create policy "Enable all for courses" on public.courses for all using (true) wi
 create policy "Enable all for contributors" on public.contributors for all using (true) with check (true);
 create policy "Enable all for resources" on public.resources for all using (true) with check (true);
 create policy "Enable all for note_requests" on public.note_requests for all using (true) with check (true);
-create policy "Enable all for creator_profile" on public.creator_profile for all using (true) with check (true);`;
+create policy "Enable all for creator_profile" on public.creator_profile for all using (true) with check (true);
+
+-- Storage bucket setup for student note uploads
+insert into storage.buckets (id, name, public)
+values ('contributions', 'contributions', true)
+on conflict (id) do nothing;
+
+create policy "Allow public uploads to contributions" on storage.objects for insert with check (bucket_id = 'contributions');
+create policy "Allow public viewing of contributions" on storage.objects for select using (bucket_id = 'contributions');
+create policy "Allow delete from contributions" on storage.objects for delete using (bucket_id = 'contributions');`;
 
     navigator.clipboard.writeText(sql);
     setCopiedSql(true);

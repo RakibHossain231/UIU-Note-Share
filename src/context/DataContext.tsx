@@ -300,8 +300,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (data.submissionType === 'file' && file) {
         const uploadRes = await SupabaseService.uploadContributionFile(file);
-        if (!uploadRes) {
-          return { success: false, error: 'Could not upload file to storage. Please try using a Google Drive link or try again.' };
+        if (!uploadRes || uploadRes.error) {
+          return { 
+            success: false, 
+            error: uploadRes?.error || 'Could not upload file to storage. Please try using a Google Drive link or try again.' 
+          };
         }
         finalFileUrl = uploadRes.publicUrl;
         storagePath = uploadRes.storagePath;
