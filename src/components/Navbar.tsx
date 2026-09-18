@@ -88,7 +88,12 @@ export const Navbar: React.FC = () => {
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  if (e.target.value.trim() && location.pathname !== '/') {
+                    navigate('/');
+                  }
+                }}
                 placeholder="Search course code, topic, or keyword (e.g. CSE 2118, Algo)..."
                 className="w-full pl-10 pr-4 py-2 text-sm rounded-full bg-gray-100 dark:bg-zinc-800/80 border border-transparent focus:border-[#FF6600] focus:bg-white dark:focus:bg-zinc-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none transition-all shadow-inner"
               />
@@ -190,7 +195,12 @@ export const Navbar: React.FC = () => {
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                if (e.target.value.trim() && location.pathname !== '/') {
+                  navigate('/');
+                }
+              }}
               placeholder="Search course or topic..."
               className="w-full pl-10 pr-4 py-2 text-sm rounded-full bg-gray-100 dark:bg-zinc-800 border border-transparent focus:border-[#FF6600] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none"
             />
