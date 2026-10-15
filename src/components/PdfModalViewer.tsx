@@ -255,30 +255,6 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ item, onClose })
               loading="lazy"
             />
           </div>
-
-          {/* Quick Reader Help Bar (Zero External Redirects) */}
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/85 backdrop-blur-md px-4 py-1.5 rounded-full text-xs text-gray-300 flex items-center space-x-2 border border-white/10 shadow-lg pointer-events-auto z-10">
-            <span>Taking time to load?</span>
-            <button 
-              onClick={() => {
-                setIsLoading(true);
-                setIframeKey(prev => prev + 1);
-              }}
-              className="text-[#FF6600] font-bold underline flex items-center space-x-1 hover:text-orange-400"
-            >
-              <span>Reload Reader</span>
-              <RefreshCw className="w-3 h-3" />
-            </button>
-            <span>•</span>
-            <a 
-              href={getDirectDownloadUrl(item.fileUrl)} 
-              download={`${item.title}.pdf`}
-              className="text-emerald-400 font-bold underline flex items-center space-x-1 hover:text-emerald-300"
-            >
-              <span>Download File</span>
-              <Download className="w-3 h-3" />
-            </a>
-          </div>
         </div>
 
       </div>
