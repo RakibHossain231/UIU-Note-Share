@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { 
   X, 
   UploadCloud, 
@@ -31,17 +31,62 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
   // Mode: Link vs Direct File Upload
   const [submissionType, setSubmissionType] = useState<'link' | 'file'>('link');
 
+  // Active departments that have at least one course
+  const activeDepartments = useMemo(() => {
+    const list = departments.filter(d =>
+      courses.some(c => c.department.toLowerCase() === d.code.toLowerCase())
+    );
+    return list.length > 0 ? list : departments;
+  }, [departments, courses]);
+
   // Contributor Info
   const [contributorName, setContributorName] = useState('');
-  const [department, setDepartment] = useState('CSE');
+  const [department, setDepartment] = useState(() => {
+    if (preselectedCourseId) {
+      const found = courses.find(c => c.id === preselectedCourseId);
+      if (found) return found.department;
+    }
+    return activeDepartments[0]?.code || 'CSE';
+  });
   const [batch, setBatch] = useState('');
   const [socialType, setSocialType] = useState<'facebook' | 'linkedin' | 'github' | 'email'>('facebook');
   const [profileUrl, setProfileUrl] = useState('');
 
-  // Course Info
-  const [selectedCourseId, setSelectedCourseId] = useState<string>(preselectedCourseId || (courses[0]?.id || ''));
+  // Course Info: Available courses for selected department
+  const availableCourses = useMemo(() => {
+    return courses.filter(c => c.department.toLowerCase() === department.toLowerCase());
+  }, [courses, department]);
+
+  const [selectedCourseId, setSelectedCourseId] = useState<string>(preselectedCourseId || (availableCourses[0]?.id || (courses[0]?.id || '')));
   const [customCourseCode, setCustomCourseCode] = useState('');
   const [customCourseTitle, setCustomCourseTitle] = useState('');
+
+  // Synchronize department & course when preselectedCourseId changes or when activeDepartments change
+  useEffect(() => {
+    if (preselectedCourseId) {
+      const found = courses.find(c => c.id === preselectedCourseId);
+      if (found) {
+        setDepartment(found.department);
+        setSelectedCourseId(found.id);
+        return;
+      }
+    }
+
+    if (activeDepartments.length > 0 && !activeDepartments.some(d => d.code.toLowerCase() === department.toLowerCase())) {
+      setDepartment(activeDepartments[0].code);
+    }
+  }, [preselectedCourseId, courses, activeDepartments]);
+
+  // When department changes, if selectedCourseId is not in availableCourses and not 'other', auto select first course
+  useEffect(() => {
+    if (selectedCourseId !== 'other' && !availableCourses.some(c => c.id === selectedCourseId)) {
+      if (availableCourses.length > 0) {
+        setSelectedCourseId(availableCourses[0].id);
+      } else {
+        setSelectedCourseId('other');
+      }
+    }
+  }, [availableCourses, selectedCourseId]);
 
   // Resource Info
   const [resourceType, setResourceType] = useState<ResourceType>('handnote');
@@ -321,7 +366,7 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
                       onChange={(e) => setDepartment(e.target.value)}
                       className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white focus:outline-none focus:border-[#FF6600]"
                     >
-                      {departments.map((d) => (
+                      {activeDepartments.map((d) => (
                         <option key={d.code} value={d.code}>
                           {d.name} ({d.code})
                         </option>
@@ -386,7 +431,7 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
                     onChange={(e) => setSelectedCourseId(e.target.value)}
                     className="w-full px-3 py-2 text-xs rounded-xl bg-gray-50 dark:bg-zinc-800/80 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white focus:outline-none focus:border-[#FF6600]"
                   >
-                    {courses.map((c) => (
+                    {availableCourses.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.code} — {c.title}
                       </option>

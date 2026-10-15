@@ -89,12 +89,24 @@ export const ContributorsPage: React.FC = () => {
         <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
           Filter Contributors by Department
         </h3>
-        <DepartmentFilter />
+        <DepartmentFilter mode="contributors" />
       </div>
 
       {/* Contributors Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredContributors.map((contrib) => {
+      {filteredContributors.length === 0 ? (
+        <div className="text-center py-12 bg-white dark:bg-[#1A1A1A] rounded-3xl border border-gray-200 dark:border-zinc-800 p-8 space-y-3">
+          <p className="text-gray-500 dark:text-gray-400 text-sm">No contributors found for this department yet.</p>
+          <button
+            onClick={() => setIsContributeModalOpen(true)}
+            className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-[#FF6600] text-white text-xs font-bold hover:bg-orange-600 transition-colors cursor-pointer"
+          >
+            <PlusCircle className="w-3.5 h-3.5" />
+            <span>Be the First to Contribute!</span>
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredContributors.map((contrib) => {
           const contribNotes = resources.filter(r => r.contributor?.id === contrib.id || r.contributor?.name.toLowerCase() === contrib.name.toLowerCase());
           const totalShared = contrib.contributionsCount || contribNotes.length;
 
@@ -162,6 +174,7 @@ export const ContributorsPage: React.FC = () => {
           );
         })}
       </div>
+      )}
 
       {/* Become a Contributor CTA Card */}
       <div className="relative overflow-hidden bg-gradient-to-r from-orange-600 to-amber-600 rounded-3xl p-8 sm:p-12 text-white shadow-xl">
