@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   BookOpen, 
@@ -23,6 +23,11 @@ export const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Only count saved courses that actually exist in current courses catalog
+  const savedCount = useMemo(() => {
+    return courses.filter(c => pinnedCourseIds.includes(c.id)).length;
+  }, [courses, pinnedCourseIds]);
 
   // Secret keyboard shortcut (Ctrl + Shift + A or Alt + A) for Admin to open portal
   useEffect(() => {
@@ -144,7 +149,7 @@ export const Navbar: React.FC = () => {
               <Bookmark className="w-4 h-4 text-orange-500" />
               <span className="hidden lg:inline">Saved</span>
               <span className="px-1.5 py-0.2 text-xs bg-orange-100 dark:bg-zinc-800 text-[#FF6600] rounded-full font-bold">
-                {pinnedCourseIds.length}
+                {savedCount}
               </span>
             </Link>
 
@@ -231,6 +236,19 @@ export const Navbar: React.FC = () => {
               </Link>
             );
           })}
+          <Link
+            to="/#pinned"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center justify-between px-3 py-2.5 rounded-lg text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-orange-50 dark:hover:bg-zinc-800"
+          >
+            <div className="flex items-center space-x-3">
+              <Bookmark className="w-5 h-5 text-[#FF6600]" />
+              <span>Saved Courses</span>
+            </div>
+            <span className="px-2 py-0.5 text-xs bg-orange-100 dark:bg-zinc-800 text-[#FF6600] rounded-full font-bold">
+              {savedCount}
+            </span>
+          </Link>
           {isAdmin && (
             <Link
               to="/admin"

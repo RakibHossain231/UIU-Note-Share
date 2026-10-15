@@ -276,6 +276,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setPinnedCourseIds(updated);
   };
 
+  // Clean up orphan pinned course IDs if courses don't contain them
+  useEffect(() => {
+    if (courses.length > 0 && pinnedCourseIds.length > 0) {
+      const valid = pinnedCourseIds.filter(id => courses.some(c => c.id === id));
+      if (valid.length !== pinnedCourseIds.length) {
+        setPinnedCourseIds(valid);
+        StorageService.savePinnedCourseIds(valid);
+      }
+    }
+  }, [courses, pinnedCourseIds]);
+
   const handleAddNoteRequest = async (req: Omit<NoteRequest, 'id' | 'createdAt' | 'status'>) => {
     const newReq: NoteRequest = {
       ...req,

@@ -8,7 +8,7 @@ const STORAGE_KEYS = {
   RESOURCES: 'uiu_resources_v3',
   CONTRIBUTORS: 'uiu_contributors_v3',
   DEPARTMENTS: 'uiu_departments_v2',
-  PINNED_COURSES: 'uiu_pinned_courses_v1',
+  PINNED_COURSES: 'uiu_pinned_courses_v2',
   NOTE_REQUESTS: 'uiu_note_requests_v2',
   PENDING_CONTRIBUTIONS: 'uiu_pending_contributions_v1',
   R2_CONFIG: 'uiu_r2_config_v1',
@@ -213,13 +213,22 @@ export const StorageService = {
 
   // Pinned Courses
   getPinnedCourseIds(): string[] {
-    const raw = localStorage.getItem(STORAGE_KEYS.PINNED_COURSES);
-    if (!raw) return ['cse-1111', 'cse-2215'];
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return ['cse-1111', 'cse-2215'];
+    // Clean up legacy v1 key if present
+    if (localStorage.getItem('uiu_pinned_courses_v1')) {
+      localStorage.removeItem('uiu_pinned_courses_v1');
     }
+    const raw = localStorage.getItem(STORAGE_KEYS.PINNED_COURSES);
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  },
+
+  savePinnedCourseIds(ids: string[]): void {
+    localStorage.setItem(STORAGE_KEYS.PINNED_COURSES, JSON.stringify(ids));
   },
 
   togglePinCourse(courseId: string): string[] {
@@ -227,7 +236,7 @@ export const StorageService = {
     const updated = pinned.includes(courseId)
       ? pinned.filter(id => id !== courseId)
       : [...pinned, courseId];
-    localStorage.setItem(STORAGE_KEYS.PINNED_COURSES, JSON.stringify(updated));
+    this.savePinnedCourseIds(updated);
     return updated;
   },
 

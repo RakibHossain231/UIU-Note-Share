@@ -290,15 +290,25 @@ export const CourseDetailPage: React.FC = () => {
   return (
     <div className="space-y-8 pb-24 relative min-h-[80vh]">
       
-      {/* Back to All Courses Link */}
+      {/* Back to All Courses or Categories Link (Single Unified Immediate Back) */}
       <div className="flex items-center justify-between">
-        <Link
-          to="/"
-          className="inline-flex items-center space-x-2 text-xs font-semibold text-gray-500 hover:text-[#FF6600] transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to All Courses</span>
-        </Link>
+        {selectedCategory ? (
+          <button
+            onClick={() => setSelectedCategory(null)}
+            className="inline-flex items-center space-x-2 text-xs font-semibold text-gray-500 hover:text-[#FF6600] transition-colors cursor-pointer group"
+          >
+            <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+            <span>Back to Categories</span>
+          </button>
+        ) : (
+          <Link
+            to="/"
+            className="inline-flex items-center space-x-2 text-xs font-semibold text-gray-500 hover:text-[#FF6600] transition-colors group"
+          >
+            <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+            <span>Back to All Courses</span>
+          </Link>
+        )}
 
         <div className="flex items-center space-x-2">
           <button
@@ -444,27 +454,17 @@ export const CourseDetailPage: React.FC = () => {
           {/* Breadcrumb / Subheader (Screenshot 2) */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-gray-200 dark:border-zinc-800">
             
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => setSelectedCategory(null)}
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-200 hover:bg-[#FF6600] hover:text-white transition-colors shadow-sm"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Categories</span>
-              </button>
-
-              <div className="flex items-center space-x-2">
-                <span 
-                  style={{ backgroundColor: cardColor }} 
-                  className="w-2.5 h-2.5 rounded-full inline-block"
-                />
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
-                  {categoryData[selectedCategory].title}
-                </h2>
-                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/60 text-[#FF6600]">
-                  {activeItems.length}
-                </span>
-              </div>
+            <div className="flex items-center space-x-2.5">
+              <span 
+                style={{ backgroundColor: cardColor }} 
+                className="w-2.5 h-2.5 rounded-full inline-block"
+              />
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+                {categoryData[selectedCategory].title}
+              </h2>
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/60 text-[#FF6600]">
+                {activeItems.length}
+              </span>
             </div>
 
             {/* Sort Dropdown */}
