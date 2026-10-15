@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
 import { ResourceItem } from '../types';
+import { applyWatermarkToPdf } from './pdfWatermarkService';
 
 export interface DownloadProgress {
   currentFile: string;
@@ -115,8 +116,18 @@ export const ZipDownloadService = {
 
       if (result && result.blob) {
         // Successfully downloaded real binary file
+        let fileBlob = result.blob;
+        if (result.isPdf) {
+          try {
+            const buffer = await result.blob.arrayBuffer();
+            const watermarked = await applyWatermarkToPdf(buffer, item.contributor?.name);
+            fileBlob = new Blob([watermarked.buffer as ArrayBuffer], { type: 'application/pdf' });
+          } catch (wmErr) {
+            console.warn('Could not watermark PDF in zip bundle, using original:', wmErr);
+          }
+        }
         const extension = result.isPdf ? '.pdf' : '';
-        zip.file(`${baseFilename}${extension}`, result.blob);
+        zip.file(`${baseFilename}${extension}`, fileBlob);
       } else {
         // Direct download was restricted by Google Drive permission or CORS
         // We write a clean shortcut/link file instead of a corrupted .pdf file

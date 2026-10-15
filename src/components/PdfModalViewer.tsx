@@ -16,6 +16,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { ResourceItem } from '../types';
+import { downloadResourceWithWatermark, triggerDirectDownload } from '../services/pdfWatermarkService';
 
 interface PdfModalViewerProps {
   item: ResourceItem | null;
@@ -51,6 +52,8 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ item, onClose })
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [iframeKey, setIframeKey] = useState<number>(0);
+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
+  const [downloadProgressText, setDownloadProgressText] = useState<string>('');
 
   useEffect(() => {
     setIsLoading(true);
@@ -204,24 +207,37 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ item, onClose })
     return rawTitle.toLowerCase().endsWith('.pdf') ? rawTitle : `${rawTitle}.pdf`;
   };
 
-  const handleDownload = (e: React.MouseEvent) => {
+  const handleDownload = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const downloadUrl = getDirectDownloadUrl(item.fileUrl);
-    const fileName = getDownloadFileName();
+    if (isDownloading) return;
 
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.setAttribute('download', fileName);
-    link.setAttribute('target', '_blank');
-    link.setAttribute('rel', 'noopener noreferrer');
-    document.body.appendChild(link);
-    link.click();
-    setTimeout(() => {
-      if (document.body.contains(link)) {
-        document.body.removeChild(link);
-      }
-    }, 100);
+    if (fileType !== 'pdf') {
+      const downloadUrl = getDirectDownloadUrl(item.fileUrl);
+      const fileName = getDownloadFileName();
+      triggerDirectDownload(downloadUrl, fileName);
+      return;
+    }
+
+    setIsDownloading(true);
+    setDownloadProgressText('Preparing...');
+
+    try {
+      await downloadResourceWithWatermark(item, (status) => {
+        if (status === 'fetching') {
+          setDownloadProgressText('Fetching PDF...');
+        } else if (status === 'watermarking') {
+          setDownloadProgressText('Adding Watermark...');
+        } else {
+          setDownloadProgressText('');
+        }
+      });
+    } catch (err) {
+      console.error('Download error:', err);
+    } finally {
+      setIsDownloading(false);
+      setDownloadProgressText('');
+    }
   };
 
   const embedUrl = getEmbedUrl(item.fileUrl);
@@ -342,14 +358,24 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ item, onClose })
               {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             </button>
 
-            {/* Direct Download Button (button tag ensures browser status bar never exposes drive url on hover) */}
+            {/* Direct Download Button with Watermark & hidden URL */}
             <button
               onClick={handleDownload}
-              className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[#FF6600] text-white hover:bg-orange-600 transition-colors shadow-sm cursor-pointer"
-              title="Download File"
+              disabled={isDownloading}
+              className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[#FF6600] text-white hover:bg-orange-600 transition-colors shadow-sm cursor-pointer disabled:opacity-80"
+              title="Download File with UIU Note Share watermark"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Download</span>
+              {isDownloading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span className="hidden sm:inline">{downloadProgressText || 'Downloading...'}</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Download</span>
+                </>
+              )}
             </button>
 
             {/* Close */}

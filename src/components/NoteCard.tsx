@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   FileText, 
   Download, 
@@ -7,11 +7,12 @@ import {
   HardDrive, 
   Calendar, 
   CheckCircle2, 
-  ExternalLink,
-  Sparkles
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 import { ResourceItem } from '../types';
 import { ContributorBadge } from './ContributorBadge';
+import { downloadResourceWithWatermark } from '../services/pdfWatermarkService';
 
 interface NoteCardProps {
   item: ResourceItem;
@@ -19,6 +20,7 @@ interface NoteCardProps {
 }
 
 export const NoteCard: React.FC<NoteCardProps> = ({ item, onPreview }) => {
+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
   const isDrive = item.storageType === 'drive' || item.fileUrl.includes('drive.google.com');
 
   const getTypeLabel = () => {
@@ -132,15 +134,36 @@ export const NoteCard: React.FC<NoteCardProps> = ({ item, onPreview }) => {
             <span>Open in Reader</span>
           </button>
 
-          <a
-            href={getDirectDownloadUrl(item.fileUrl)}
-            download={`${item.title}.pdf`}
-            className="flex items-center justify-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-orange-50 dark:bg-orange-950/40 text-[#FF6600] dark:text-orange-400 hover:bg-[#FF6600] hover:text-white dark:hover:bg-[#FF6600] dark:hover:text-white transition-all border border-orange-200 dark:border-orange-900/40"
-            title="Direct Download File (No Google Drive Redirection)"
+          <button
+            onClick={async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (isDownloading) return;
+              setIsDownloading(true);
+              try {
+                await downloadResourceWithWatermark(item);
+              } catch (err) {
+                console.error('Download error:', err);
+              } finally {
+                setIsDownloading(false);
+              }
+            }}
+            disabled={isDownloading}
+            className="flex items-center justify-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-orange-50 dark:bg-orange-950/40 text-[#FF6600] dark:text-orange-400 hover:bg-[#FF6600] hover:text-white dark:hover:bg-[#FF6600] dark:hover:text-white transition-all border border-orange-200 dark:border-orange-900/40 cursor-pointer disabled:opacity-75"
+            title="Download PDF with UIU Note Share watermark"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>Download</span>
-          </a>
+            {isDownloading ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Preparing...</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-3.5 h-3.5" />
+                <span>Download</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 
