@@ -36,7 +36,7 @@ const CATEGORY_ORDER: CategoryKey[] = [
   'cheatsheet'
 ];
 
-export const isSolutionItem = (item: ResourceItem): boolean => {
+const isSolutionItem = (item: ResourceItem): boolean => {
   if (item.type === 'mid_solve' || item.type === 'final_solve' || item.type === 'ct_solve' || item.type === 'assignment_solve') {
     return true;
   }
@@ -56,7 +56,7 @@ export const isSolutionItem = (item: ResourceItem): boolean => {
   return title.includes('solve') || title.includes('solution') || title.includes('answer') || title.includes('soln');
 };
 
-export const isQuestionItem = (item: ResourceItem): boolean => {
+const isQuestionItem = (item: ResourceItem): boolean => {
   if (
     item.type === 'question_mid' || 
     item.type === 'mid_question' || 
