@@ -23,6 +23,28 @@ interface PdfModalViewerProps {
   onClose: () => void;
 }
 
+const getFileType = (url: string, title?: string): 'image' | 'doc' | 'pdf' => {
+  const cleanUrl = (url || '').split('?')[0].toLowerCase();
+  const cleanTitle = (title || '').toLowerCase();
+
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg', '.bmp', '.avif'];
+  const docExtensions = ['.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx', '.rtf', '.odt', '.txt', '.csv'];
+
+  if (imageExtensions.some(ext => cleanUrl.endsWith(ext) || cleanTitle.endsWith(ext))) {
+    return 'image';
+  }
+
+  if (docExtensions.some(ext => cleanUrl.endsWith(ext) || cleanTitle.endsWith(ext))) {
+    return 'doc';
+  }
+
+  if (url.includes('docs.google.com/document') || url.includes('docs.google.com/presentation') || url.includes('docs.google.com/spreadsheets')) {
+    return 'doc';
+  }
+
+  return 'pdf';
+};
+
 export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ item, onClose }) => {
   const [zoom, setZoom] = useState<number>(100);
   const [darkInvert, setDarkInvert] = useState<boolean>(false);
@@ -49,6 +71,25 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ item, onClose })
 
   if (!item) return null;
 
+  const fileType = getFileType(item.fileUrl, item.title);
+
+  const getImageSrc = (url: string) => {
+    if (!url) return '';
+    if (url.includes('drive.google.com')) {
+      const matchD = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (matchD && matchD[1]) {
+        return `https://lh3.googleusercontent.com/d/${matchD[1]}`;
+      }
+      const matchId = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (matchId && matchId[1]) {
+        return `https://lh3.googleusercontent.com/d/${matchId[1]}`;
+      }
+    }
+    return url;
+  };
+
+  const imageSrc = getImageSrc(item.fileUrl);
+
   // Format URL for clean in-browser preview without triggering browser auto-download
   const getEmbedUrl = (url: string) => {
     if (!url) return '';
@@ -72,8 +113,7 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ item, onClose })
     }
 
     // 3. For any web URL (GitHub raw, Cloudflare R2, Supabase, S3, etc.)
-    // Wrapping with Google Docs Viewer displays the PDF directly in the browser
-    // and prevents the browser's download manager from auto-downloading the file
+    // Wrapping with Google Docs Viewer displays PDF & Office documents directly in the browser
     return `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
   };
 
@@ -90,6 +130,19 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ item, onClose })
       }
     }
     return url;
+  };
+
+  const getDownloadFileName = () => {
+    const rawTitle = item.title.trim();
+    const cleanUrl = (item.fileUrl || '').split('?')[0].toLowerCase();
+    const extMatch = cleanUrl.match(/\.([a-z0-9]+)$/);
+    if (extMatch && extMatch[1]) {
+      const ext = `.${extMatch[1]}`;
+      return rawTitle.toLowerCase().endsWith(ext) ? rawTitle : `${rawTitle}${ext}`;
+    }
+    if (fileType === 'image') return rawTitle.toLowerCase().endsWith('.jpg') ? rawTitle : `${rawTitle}.jpg`;
+    if (fileType === 'doc') return rawTitle.toLowerCase().endsWith('.docx') ? rawTitle : `${rawTitle}.docx`;
+    return rawTitle.toLowerCase().endsWith('.pdf') ? rawTitle : `${rawTitle}.pdf`;
   };
 
   const embedUrl = getEmbedUrl(item.fileUrl);
@@ -115,11 +168,22 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ item, onClose })
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-[#181818]">
           <div className="flex items-center space-x-3 truncate">
             <div className="truncate">
-              <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white truncate">
-                {item.title}
-              </h3>
+              <div className="flex items-center space-x-2 truncate">
+                <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full shrink-0 ${
+                  fileType === 'image' 
+                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300' 
+                    : fileType === 'doc'
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                    : 'bg-orange-100 text-[#FF6600] dark:bg-orange-950/60 dark:text-orange-400'
+                }`}>
+                  {fileType === 'image' ? 'Image' : fileType === 'doc' ? 'Document' : 'PDF'}
+                </span>
+                <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white truncate">
+                  {item.title}
+                </h3>
+              </div>
               {item.contributor && (
-                <div className="flex items-center space-x-1.5 text-xs text-gray-500 dark:text-gray-400">
+                <div className="flex items-center space-x-1.5 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                   <Award className="w-3.5 h-3.5 text-amber-500" />
                   <span>Contributed by: <strong>{item.contributor.name}</strong></span>
                   {item.contributor.department && (
@@ -202,9 +266,9 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ item, onClose })
             {/* Direct Download Button */}
             <a
               href={getDirectDownloadUrl(item.fileUrl)}
-              download={`${item.title}.pdf`}
+              download={getDownloadFileName()}
               className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[#FF6600] text-white hover:bg-orange-600 transition-colors shadow-sm"
-              title="Direct Download PDF"
+              title="Download File"
             >
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Download</span>
@@ -221,40 +285,68 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ item, onClose })
           </div>
         </div>
 
-        {/* PDF Viewer Body */}
-        <div className="relative flex-1 bg-zinc-900 overflow-auto flex items-center justify-center">
+        {/* Viewer Body */}
+        <div className="relative flex-1 bg-zinc-900 overflow-auto flex items-center justify-center p-2 sm:p-4">
           
           {/* Loading Indicator */}
           {isLoading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900/90 z-20 space-y-3">
               <Loader2 className="w-9 h-9 text-[#FF6600] animate-spin" />
               <p className="text-xs font-bold text-gray-300 tracking-wide">
-                Loading Document in UIU Reader...
+                {fileType === 'image' 
+                  ? 'Loading Image Preview...' 
+                  : fileType === 'doc' 
+                  ? 'Loading Document Reader...' 
+                  : 'Loading Document in UIU Reader...'}
               </p>
               <p className="text-[11px] text-gray-400 max-w-xs text-center">
-                Rendering preview in-browser without automatic file download.
+                Rendering in-browser without automatic file download.
               </p>
             </div>
           )}
 
-          <div 
-            className="w-full h-full transition-all duration-200 flex items-center justify-center"
-            style={{
-              filter: darkInvert ? 'invert(90%) hue-rotate(180deg)' : 'none',
-              transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
-              transformOrigin: 'center center'
-            }}
-          >
-            <iframe
-              key={iframeKey}
-              src={embedUrl}
-              title={item.title}
-              onLoad={() => setIsLoading(false)}
-              className="w-full h-full border-0 bg-white"
-              allow="autoplay"
-              loading="lazy"
-            />
-          </div>
+          {fileType === 'image' ? (
+            /* IMAGE VIEWER */
+            <div 
+              className="w-full h-full flex items-center justify-center overflow-auto"
+              style={{
+                filter: darkInvert ? 'invert(90%) hue-rotate(180deg)' : 'none',
+              }}
+            >
+              <img
+                key={iframeKey}
+                src={imageSrc}
+                alt={item.title}
+                onLoad={() => setIsLoading(false)}
+                onError={() => setIsLoading(false)}
+                className="max-w-full max-h-full object-contain select-none transition-transform duration-150 rounded-lg shadow-xl"
+                style={{
+                  transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
+                  transformOrigin: 'center center'
+                }}
+              />
+            </div>
+          ) : (
+            /* PDF & DOC IFRAME VIEWER */
+            <div 
+              className="w-full h-full transition-all duration-200 flex items-center justify-center"
+              style={{
+                filter: darkInvert ? 'invert(90%) hue-rotate(180deg)' : 'none',
+                transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
+                transformOrigin: 'center center'
+              }}
+            >
+              <iframe
+                key={iframeKey}
+                src={embedUrl}
+                title={item.title}
+                onLoad={() => setIsLoading(false)}
+                className="w-full h-full border-0 bg-white rounded-lg shadow-sm"
+                allow="autoplay"
+                loading="lazy"
+              />
+            </div>
+          )}
         </div>
 
       </div>

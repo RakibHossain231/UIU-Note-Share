@@ -84,6 +84,18 @@ const isQuestionItem = (item: ResourceItem): boolean => {
   return !isSolutionItem(item);
 };
 
+const getActionLabel = (item: ResourceItem) => {
+  const url = (item.fileUrl || '').split('?')[0].toLowerCase();
+  const title = (item.title || '').toLowerCase();
+  if (['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg', '.bmp'].some(ext => url.endsWith(ext) || title.endsWith(ext))) {
+    return 'View Image';
+  }
+  if (['.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx'].some(ext => url.endsWith(ext) || title.endsWith(ext))) {
+    return 'Open Document';
+  }
+  return 'Read PDF';
+};
+
 export const CourseDetailPage: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
   const { courses, resources, pinnedCourseIds, togglePinCourse, recordCourseView } = useData();
@@ -559,7 +571,7 @@ export const CourseDetailPage: React.FC = () => {
                         {item.contributor ? `By ${item.contributor.name}` : 'UIU Community'}
                       </span>
                       <span className="text-[11px] font-bold text-[#FF6600] group-hover:translate-x-0.5 transition-transform flex items-center space-x-1">
-                        <span>Read PDF</span>
+                        <span>{getActionLabel(item)}</span>
                         <span>&rarr;</span>
                       </span>
                     </div>
