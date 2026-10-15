@@ -94,7 +94,31 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ item, onClose })
   const getEmbedUrl = (url: string) => {
     if (!url) return '';
 
-    // 1. Google Drive URLs
+    // 1. Google Docs URLs (e.g. https://docs.google.com/document/d/.../edit)
+    if (url.includes('docs.google.com/document/d/')) {
+      const matchDoc = url.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/);
+      if (matchDoc && matchDoc[1]) {
+        return `https://docs.google.com/document/d/${matchDoc[1]}/preview`;
+      }
+    }
+
+    // 2. Google Sheets URLs
+    if (url.includes('docs.google.com/spreadsheets/d/')) {
+      const matchSheet = url.match(/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+      if (matchSheet && matchSheet[1]) {
+        return `https://docs.google.com/spreadsheets/d/${matchSheet[1]}/preview`;
+      }
+    }
+
+    // 3. Google Slides URLs
+    if (url.includes('docs.google.com/presentation/d/')) {
+      const matchSlide = url.match(/docs\.google\.com\/presentation\/d\/([a-zA-Z0-9_-]+)/);
+      if (matchSlide && matchSlide[1]) {
+        return `https://docs.google.com/presentation/d/${matchSlide[1]}/preview`;
+      }
+    }
+
+    // 4. Google Drive URLs
     if (url.includes('drive.google.com')) {
       const matchD = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
       if (matchD && matchD[1]) {
@@ -104,21 +128,56 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ item, onClose })
       if (matchId && matchId[1]) {
         return `https://drive.google.com/file/d/${matchId[1]}/preview`;
       }
-      return url.replace(/\/view(\?.*)?$/, '/preview');
+      return url.replace(/\/view(\?.*)?$/, '/preview').replace(/\/edit(\?.*)?$/, '/preview');
     }
 
-    // 2. Already wrapped with Google Docs Viewer
+    // 5. Already wrapped with Google Docs Viewer
     if (url.includes('docs.google.com/viewer')) {
       return url;
     }
 
-    // 3. For any web URL (GitHub raw, Cloudflare R2, Supabase, S3, etc.)
-    // Wrapping with Google Docs Viewer displays PDF & Office documents directly in the browser
+    // 6. Direct Word/PowerPoint/Excel files from Supabase/R2/web:
+    const cleanUrl = url.split('?')[0].toLowerCase();
+    if (
+      cleanUrl.endsWith('.docx') || cleanUrl.endsWith('.doc') || 
+      cleanUrl.endsWith('.pptx') || cleanUrl.endsWith('.ppt') || 
+      cleanUrl.endsWith('.xlsx') || cleanUrl.endsWith('.xls')
+    ) {
+      return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
+    }
+
+    // 7. For PDF and other documents:
     return `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
   };
 
   const getDirectDownloadUrl = (url: string) => {
     if (!url) return '';
+
+    // Google Docs download as .docx
+    if (url.includes('docs.google.com/document/d/')) {
+      const matchDoc = url.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/);
+      if (matchDoc && matchDoc[1]) {
+        return `https://docs.google.com/document/d/${matchDoc[1]}/export?format=docx`;
+      }
+    }
+
+    // Google Sheets download as .xlsx
+    if (url.includes('docs.google.com/spreadsheets/d/')) {
+      const matchSheet = url.match(/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+      if (matchSheet && matchSheet[1]) {
+        return `https://docs.google.com/spreadsheets/d/${matchSheet[1]}/export?format=xlsx`;
+      }
+    }
+
+    // Google Slides download as .pptx
+    if (url.includes('docs.google.com/presentation/d/')) {
+      const matchSlide = url.match(/docs\.google\.com\/presentation\/d\/([a-zA-Z0-9_-]+)/);
+      if (matchSlide && matchSlide[1]) {
+        return `https://docs.google.com/presentation/d/${matchSlide[1]}/export/pptx`;
+      }
+    }
+
+    // Google Drive direct download
     if (url.includes('drive.google.com')) {
       const matchD = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
       if (matchD && matchD[1]) {
@@ -129,6 +188,7 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ item, onClose })
         return `https://drive.google.com/uc?export=download&id=${matchId[1]}`;
       }
     }
+
     return url;
   };
 
@@ -272,6 +332,17 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ item, onClose })
             >
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Download</span>
+            </a>
+
+            {/* Open Original Link */}
+            <a
+              href={item.fileUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="p-1.5 sm:p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
+              title="Open Original Link in New Tab"
+            >
+              <ExternalLink className="w-4 h-4" />
             </a>
 
             {/* Close */}
