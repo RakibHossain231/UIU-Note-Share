@@ -8,8 +8,7 @@ import {
   ExternalLink,
   PlusCircle,
   CheckCircle2,
-  FileCheck2,
-  Send
+  FileCheck2
 } from 'lucide-react';
 import { FacebookIcon, LinkedinIcon, GithubIcon } from '../components/SocialIcons';
 import { useData } from '../context/DataContext';
@@ -18,7 +17,7 @@ import { ContributeModal } from '../components/ContributeModal';
 
 export const ContributorsPage: React.FC = () => {
   const { contributors, resources, selectedDepartment, setSelectedDepartment } = useData();
-  const [copiedLink, setCopiedLink] = useState(false);
+
   const [isContributeModalOpen, setIsContributeModalOpen] = useState(false);
 
   // Filter contributors by selected department and sort by contributions count
@@ -50,11 +49,7 @@ export const ContributorsPage: React.FC = () => {
     }
   };
 
-  const handleShareLink = () => {
-    navigator.clipboard.writeText(window.location.href);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2000);
-  };
+
 
   return (
     <div className="space-y-12 pb-16">
@@ -192,41 +187,7 @@ export const ContributorsPage: React.FC = () => {
       </div>
       )}
 
-      {/* Become a Contributor CTA Card */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-orange-600 to-amber-600 rounded-3xl p-8 sm:p-12 text-white shadow-xl">
-        <div className="relative z-10 max-w-2xl space-y-4">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-bold text-white">
-            <Sparkles className="w-3.5 h-3.5 text-yellow-200" />
-            <span>Join the Community Movement</span>
-          </div>
 
-          <h2 className="text-2xl sm:text-4xl font-extrabold leading-tight">
-            Want to Share Your Notes & Get Credited?
-          </h2>
-
-          <p className="text-sm sm:text-base text-orange-100 leading-relaxed">
-            Whether you are from CSE, Data Science, EEE, BBA, or Civil — if you have clean handwritten notes, past mid/final solves, or CT questions, send them to us! We verify each resource and feature your name and profile link on the Wall of Contributors.
-          </p>
-
-          <div className="flex flex-wrap items-center gap-3 pt-2">
-            <button
-              onClick={() => setIsContributeModalOpen(true)}
-              className="flex items-center space-x-2 px-6 py-3 rounded-2xl bg-white text-orange-600 font-bold text-sm shadow-md hover:bg-orange-50 transition-all hover:scale-105 active:scale-95 cursor-pointer"
-            >
-              <Send className="w-4 h-4" />
-              <span>Submit Notes / Direct PDF</span>
-            </button>
-
-            <button
-              onClick={handleShareLink}
-              className="flex items-center space-x-2 px-5 py-3 rounded-2xl bg-black/20 hover:bg-black/30 text-white font-semibold text-sm backdrop-blur-md border border-white/20 transition-colors cursor-pointer"
-            >
-              <ExternalLink className="w-4 h-4" />
-              <span>{copiedLink ? 'Link Copied!' : 'Share This Page'}</span>
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* Contribution Submission Modal */}
       <ContributeModal
