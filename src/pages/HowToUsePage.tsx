@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { 
   BookOpen, 
   Search, 
+  Bookmark, 
   Eye, 
   Download, 
   Sparkles, 
@@ -12,9 +13,10 @@ import {
   Users, 
   ShieldCheck, 
   MessageSquarePlus, 
-  AlertCircle,
-  ChevronDown,
-  ArrowRight
+  AlertCircle, 
+  ChevronDown, 
+  ArrowRight,
+  CheckCircle2
 } from 'lucide-react';
 import { ContributeModal } from '../components/ContributeModal';
 
@@ -31,6 +33,10 @@ export const HowToUsePage: React.FC = () => {
     {
       q: 'Do I need an account or login to read or share notes?',
       a: 'No! UIU Note Share is 100% free and open. No account registration or login is required to browse, read, download, or contribute notes.'
+    },
+    {
+      q: 'How does the "Pin / Save Course" feature work?',
+      a: 'Clicking the Bookmark (📌) icon on any course card pins it to your personal saved list. Pinned courses stay at the very top of your homepage and update the "Saved" counter in the Navbar, so you can jump right into your current trimester subjects without searching.'
     },
     {
       q: 'Will my raw Google Drive link be exposed to other students?',
@@ -57,7 +63,7 @@ export const HowToUsePage: React.FC = () => {
       <section className="text-center max-w-3xl mx-auto space-y-4 pt-4">
         <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800/60 text-[#FF6600] dark:text-orange-400 text-xs font-bold">
           <BookOpen className="w-4 h-4" />
-          <span>User Guide & Instructions</span>
+          <span>User Manual & Guide</span>
         </div>
 
         <h1 className="text-3xl sm:text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight">
@@ -65,7 +71,7 @@ export const HowToUsePage: React.FC = () => {
         </h1>
 
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 leading-relaxed">
-          A beginner-friendly guide on how to discover study notes, exam solves, and how to share your own notes to get credited on the platform.
+          The complete, beginner-friendly manual on how students can discover, bookmark, and read study notes, and how contributors can share materials to get credited.
         </p>
 
         {/* Segment Switcher */}
@@ -79,7 +85,7 @@ export const HowToUsePage: React.FC = () => {
             }`}
           >
             <span>🎓 For Students</span>
-            <span className="text-[11px] opacity-80">(Browse & Read)</span>
+            <span className="text-[11px] opacity-80">(Browse & Read Guide)</span>
           </button>
 
           <button
@@ -91,7 +97,7 @@ export const HowToUsePage: React.FC = () => {
             }`}
           >
             <span>✍️ For Contributors</span>
-            <span className="text-[11px] opacity-80">(Share Notes)</span>
+            <span className="text-[11px] opacity-80">(Share Notes Guide)</span>
           </button>
 
           <button
@@ -115,16 +121,16 @@ export const HowToUsePage: React.FC = () => {
         <section className="space-y-8 animate-in fade-in duration-300">
           <div className="text-center max-w-xl mx-auto space-y-1">
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-              How Students Can Find & Read Notes
+              Student User Manual: Find, Pin & Study
             </h2>
             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-              Get exam solves, handwritten lecture notes, and CT questions in 5 easy steps:
+              Everything you need to master your courses in 6 simple steps:
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             
-            {/* Step 1 */}
+            {/* Step 1: Search & Filter */}
             <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800/90 rounded-3xl p-6 shadow-sm hover:border-[#FF6600]/40 transition-all flex flex-col justify-between space-y-4">
               <div className="space-y-3">
                 <div className="w-12 h-12 rounded-2xl bg-orange-100 text-[#FF6600] dark:bg-orange-950/60 dark:text-orange-400 flex items-center justify-center font-black text-lg">
@@ -132,102 +138,130 @@ export const HowToUsePage: React.FC = () => {
                 </div>
                 <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center space-x-2">
                   <Search className="w-4 h-4 text-[#FF6600]" />
-                  <span>Search Your Course</span>
+                  <span>Search & Filter Courses</span>
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                  Type your course code (e.g., <strong>CSE 2118</strong>, <strong>MATH 1101</strong>, or <em>Algorithms</em>) into the search bar, or use the department filter (CSE, DS, EEE, BBA, Civil) to find your course.
+                  Type your course code (e.g. <strong>CSE 2118</strong>, <strong>MATH 1101</strong>) or course title into the top search bar, or select your department (CSE, DS, EEE, BBA, Civil) to filter courses instantly.
                 </p>
               </div>
               <div className="text-[11px] text-orange-600 dark:text-orange-400 font-semibold bg-orange-50 dark:bg-orange-950/30 p-2.5 rounded-xl">
-                💡 Quick Tip: Click the bookmark (📌) icon on any course card to save it to your "Saved" list for instant access.
+                🔍 You can search by course code, full title, or abbreviation (e.g., AOOP, SPL).
               </div>
             </div>
 
-            {/* Step 2 */}
+            {/* Step 2: Pin & Bookmark Courses */}
             <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800/90 rounded-3xl p-6 shadow-sm hover:border-[#FF6600]/40 transition-all flex flex-col justify-between space-y-4">
               <div className="space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 flex items-center justify-center font-black text-lg">
+                <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400 flex items-center justify-center font-black text-lg">
                   2
                 </div>
                 <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center space-x-2">
-                  <Layers className="w-4 h-4 text-blue-500" />
-                  <span>Choose Note Category</span>
+                  <Bookmark className="w-4 h-4 text-amber-500" />
+                  <span>Pin / Save Current Courses</span>
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                  Open your course and switch between tabs: <strong>Handnotes</strong>, <strong>Mid Questions & Solves</strong>, <strong>Final Solves</strong>, <strong>CT Solves</strong>, and <strong>Assignments</strong>.
+                  Taking 3 or 4 courses this trimester? Click the <strong>Bookmark (📌)</strong> icon on any course card. Pinned courses automatically stay at the very top of your homepage under <strong>"Saved Courses"</strong> and in the Navbar.
                 </p>
               </div>
-              <div className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-950/30 p-2.5 rounded-xl">
-                🔍 Trimester tags (e.g., Trim 231, 241) help you identify the most recent exam solutions at a glance.
+              <div className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold bg-amber-50 dark:bg-amber-950/30 p-2.5 rounded-xl">
+                📌 Never search again: Click "Saved" in the navbar to open your active subjects immediately.
               </div>
             </div>
 
-            {/* Step 3 */}
+            {/* Step 3: Browse Categories */}
+            <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800/90 rounded-3xl p-6 shadow-sm hover:border-[#FF6600]/40 transition-all flex flex-col justify-between space-y-4">
+              <div className="space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 flex items-center justify-center font-black text-lg">
+                  3
+                </div>
+                <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+                  <Layers className="w-4 h-4 text-blue-500" />
+                  <span>Browse Organized Categories</span>
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                  Inside any course, switch between tabs: <strong>Handnotes</strong>, <strong>Mid Solves</strong>, <strong>Final Solves</strong>, <strong>CT Solves</strong>, and <strong>Assignments</strong>. Trimester tags (e.g. Trim 231, 241) help identify recent solves.
+                </p>
+              </div>
+              <div className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-950/30 p-2.5 rounded-xl">
+                🏷️ Look for the "Includes Solution" badge on exam question cards for answer scripts.
+              </div>
+            </div>
+
+            {/* Step 4: In-App Clean Reader */}
             <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800/90 rounded-3xl p-6 shadow-sm hover:border-[#FF6600]/40 transition-all flex flex-col justify-between space-y-4">
               <div className="space-y-3">
                 <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 flex items-center justify-center font-black text-lg">
-                  3
+                  4
                 </div>
                 <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center space-x-2">
                   <Eye className="w-4 h-4 text-emerald-500" />
                   <span>Read In-App (No Redirects)</span>
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                  Click <strong>"Open in Reader"</strong> to view any PDF, document, or image directly inside the browser with full-screen, zoom in/out, and rotation controls.
+                  Click <strong>"Open in Reader"</strong> to view any PDF, document, or image directly inside the browser. Enjoy full-screen viewing, zoom in/out, and page rotation without annoying external redirects.
                 </p>
               </div>
               <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-950/30 p-2.5 rounded-xl">
-                🌙 Eye Comfort: Toggle the built-in <strong>Dark Mode</strong> button inside the viewer for comfortable night studying.
+                🌙 Eye Comfort: Turn on the built-in <strong>Dark Mode</strong> button inside the viewer for comfortable night-time study.
               </div>
             </div>
 
-            {/* Step 4 */}
+            {/* Step 5: Fast Download with Watermark */}
             <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800/90 rounded-3xl p-6 shadow-sm hover:border-[#FF6600]/40 transition-all flex flex-col justify-between space-y-4">
               <div className="space-y-3">
                 <div className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-600 dark:bg-purple-950/60 dark:text-purple-400 flex items-center justify-center font-black text-lg">
-                  4
-                </div>
-                <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center space-x-2">
-                  <Download className="w-4 h-4 text-purple-500" />
-                  <span>1-Click Fast Download</span>
-                </h3>
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                  Click <strong>Download</strong> to save the file with the contributor attribution watermark. There are zero ads, no pop-ups, and no countdown timers.
-                </p>
-              </div>
-              <div className="text-[11px] text-purple-600 dark:text-purple-400 font-semibold bg-purple-50 dark:bg-purple-950/30 p-2.5 rounded-xl">
-                📦 You can also click <strong>"Download Course as ZIP"</strong> to download all notes in a single bundle.
-              </div>
-            </div>
-
-            {/* Step 5 */}
-            <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800/90 rounded-3xl p-6 shadow-sm hover:border-[#FF6600]/40 transition-all flex flex-col justify-between space-y-4 md:col-span-2 lg:col-span-2">
-              <div className="space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400 flex items-center justify-center font-black text-lg">
                   5
                 </div>
                 <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center space-x-2">
-                  <MessageSquarePlus className="w-4 h-4 text-amber-500" />
-                  <span>Request Notes if Missing</span>
+                  <Download className="w-4 h-4 text-purple-500" />
+                  <span>Fast 1-Click Download</span>
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                  Cannot find a specific midterm solve, final answer script, or lecture note? Click the <strong>"Request Note"</strong> button inside the course to notify fellow students and contributors.
+                  Click <strong>Download</strong> to save the file with the contributor attribution watermark. Or click <strong>"Download Course as ZIP"</strong> to archive all notes and solves for the entire subject in a single bundle.
                 </p>
               </div>
-              <div className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold bg-amber-50 dark:bg-amber-950/30 p-2.5 rounded-xl">
-                ⚡ Contributors and senior students check note requests frequently to upload solutions.
+              <div className="text-[11px] text-purple-600 dark:text-purple-400 font-semibold bg-purple-50 dark:bg-purple-950/30 p-2.5 rounded-xl">
+                ⚡ Zero ads, zero countdown timers, and zero popups — pure, direct downloads.
+              </div>
+            </div>
+
+            {/* Step 6: Request Missing Notes */}
+            <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800/90 rounded-3xl p-6 shadow-sm hover:border-[#FF6600]/40 transition-all flex flex-col justify-between space-y-4">
+              <div className="space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400 flex items-center justify-center font-black text-lg">
+                  6
+                </div>
+                <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+                  <MessageSquarePlus className="w-4 h-4 text-rose-500" />
+                  <span>Request Missing Notes</span>
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                  Cannot find a solution for a specific midterm or CT? Click the <strong>"Request Note"</strong> button inside the course. Senior students and contributors receive the request and upload the answers.
+                </p>
+              </div>
+              <div className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold bg-rose-50 dark:bg-rose-950/30 p-2.5 rounded-xl">
+                🤝 Peer Solidarity: Community contributors actively fulfill missing note requests.
               </div>
             </div>
 
           </div>
 
-          <div className="text-center pt-4">
+          {/* Student Actions Bar: All Courses & Wall of Contributors */}
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
             <Link
               to="/"
               className="inline-flex items-center space-x-2 px-6 py-3 rounded-2xl bg-[#FF6600] text-white font-bold text-sm hover:bg-orange-600 transition-all shadow-md shadow-orange-500/20 hover:scale-105 active:scale-95"
             >
-              <span>Explore All Courses Now</span>
-              <ArrowRight className="w-4 h-4" />
+              <Layers className="w-4 h-4" />
+              <span>Explore All Courses</span>
+            </Link>
+
+            <Link
+              to="/contributors"
+              className="inline-flex items-center space-x-2 px-6 py-3 rounded-2xl bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 text-gray-800 dark:text-gray-200 font-bold text-sm hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all hover:scale-105 active:scale-95 shadow-sm"
+            >
+              <Users className="w-4 h-4 text-[#FF6600]" />
+              <span>Wall of Contributors</span>
             </Link>
           </div>
         </section>
@@ -318,6 +352,7 @@ export const HowToUsePage: React.FC = () => {
             </ol>
           </div>
 
+          {/* Contributor Action Button: Submit Notes Now */}
           <div className="text-center pt-2">
             <button
               onClick={() => setIsContributeModalOpen(true)}
