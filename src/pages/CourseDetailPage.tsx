@@ -17,7 +17,7 @@ import { BulkDownloadModal } from '../components/BulkDownloadModal';
 import { EmptyState } from '../components/EmptyState';
 import { RequestNoteModal } from '../components/RequestNoteModal';
 import { ZipDownloadService, DownloadProgress } from '../services/zipDownloadService';
-import { formatTrimesterCode, getLatestTrimesterForCourse, getTrimesterScore } from '../utils/trimesterHelper';
+import { formatTrimesterCode, getLatestTrimesterForCourse, getTrimesterScore, detectNoteScope } from '../utils/trimesterHelper';
 
 type CategoryKey = 
   | 'handnote'
@@ -36,73 +36,34 @@ const CATEGORY_ORDER: CategoryKey[] = [
   'cheatsheet'
 ];
 
-const isSolutionItem = (item: ResourceItem): boolean => {
+export const isSolutionItem = (item: ResourceItem): boolean => {
   if (item.type === 'mid_solve' || item.type === 'final_solve' || item.type === 'ct_solve' || item.type === 'assignment_solve') {
     return true;
   }
-  if (
-    item.type === 'question_mid' || 
-    item.type === 'mid_question' || 
-    item.type === 'question_final' || 
-    item.type === 'final_question' || 
-    item.type === 'ct_question' || 
-    item.type === 'assignment_question' ||
-    item.type === 'handnote' ||
-    item.type === 'cheatsheet'
-  ) {
-    return false;
-  }
+  if (item.hasSolution) return true;
   const title = (item.title || '').toLowerCase();
   return title.includes('solve') || title.includes('solution') || title.includes('answer') || title.includes('soln');
 };
 
-const isQuestionItem = (item: ResourceItem): boolean => {
-  if (
-    item.type === 'question_mid' || 
-    item.type === 'mid_question' || 
-    item.type === 'question_final' || 
-    item.type === 'final_question' || 
-    item.type === 'ct_question' || 
-    item.type === 'assignment_question'
-  ) {
+export const isQuestionItem = (item: ResourceItem): boolean => {
+  if (item.type === 'question_mid' || item.type === 'mid_question' || item.type === 'question_final' || item.type === 'final_question' || item.type === 'ct_question' || item.type === 'assignment_question') {
     return true;
   }
-  if (
-    item.type === 'mid_solve' || 
-    item.type === 'final_solve' || 
-    item.type === 'ct_solve' || 
-    item.type === 'assignment_solve' ||
-    item.type === 'handnote' ||
-    item.type === 'cheatsheet'
-  ) {
-    return false;
-  }
   const title = (item.title || '').toLowerCase();
-  if (title.includes('question') || title.includes('qeustion') || title.includes('ques') || title.includes('qp')) {
+  if (title.includes('question') || title.includes('ques') || title.includes('qp')) {
     return true;
   }
   return !isSolutionItem(item);
 };
 
-const getActionLabel = (item: ResourceItem) => {
-  const url = (item.fileUrl || '').split('?')[0].toLowerCase();
-  const title = (item.title || '').toLowerCase();
-  if (['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg', '.bmp'].some(ext => url.endsWith(ext) || title.endsWith(ext))) {
-    return 'View Image';
-  }
-  if (['.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx'].some(ext => url.endsWith(ext) || title.endsWith(ext))) {
-    return 'Open Document';
-  }
-  return 'Read PDF';
-};
-
 export const CourseDetailPage: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
-  const { courses, resources, pinnedCourseIds, togglePinCourse, recordCourseView } = useData();
+  const { courses, resources, pinnedCourseIds, togglePinCourse } = useData();
 
   // Selected Category (null = Level 1 Category Hub, string = Level 2 Trimester Grid)
   const [selectedCategory, setSelectedCategory] = useState<CategoryKey | null>(null);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [subFilter, setSubFilter] = useState<string>('all');
 
   // Modals state
   const [previewItem, setPreviewItem] = useState<ResourceItem | null>(null);
@@ -110,15 +71,9 @@ export const CourseDetailPage: React.FC = () => {
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
 
-  // Track course access view for admin analytics
+  // Scroll to top and reset sub-filter whenever category view changes (level 1 <-> level 2)
   React.useEffect(() => {
-    if (courseId) {
-      recordCourseView(courseId);
-    }
-  }, [courseId, recordCourseView]);
-
-  // Scroll to top whenever category view changes (level 1 <-> level 2)
-  React.useEffect(() => {
+    setSubFilter('all');
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     if (document.documentElement) document.documentElement.scrollTop = 0;
     if (document.body) document.body.scrollTop = 0;
@@ -145,40 +100,46 @@ export const CourseDetailPage: React.FC = () => {
 
   // Unified 5 Primary Categories (+ Cheat Sheets if available)
   const categoryData = useMemo(() => {
-    // 1. Handnotes - STRICTLY only handnotes
+    // 1. Handnotes
     const handnotes = courseResources.filter(r => r.type === 'handnote');
 
-    // 2. Mid Questions & Solves (combined) - STRICTLY only mid types
+    // 2. Mid Questions & Solves (combined)
     const midItems = courseResources.filter(r => 
-      r.type === 'mid' ||
       r.type === 'question_mid' || 
       r.type === 'mid_question' || 
-      r.type === 'mid_solve'
+      r.type === 'mid_solve' ||
+      r.term === 'mid' ||
+      (r.title && /\bmid\b/i.test(r.title))
     );
 
-    // 3. Final Questions & Solves (combined) - STRICTLY only final types
+    // 3. Final Questions & Solves (combined)
     const finalItems = courseResources.filter(r => 
-      r.type === 'final' ||
       r.type === 'question_final' || 
       r.type === 'final_question' || 
-      r.type === 'final_solve'
+      r.type === 'final_solve' ||
+      r.term === 'final' ||
+      (r.title && /\bfinal\b/i.test(r.title))
     );
 
-    // 4. CT Questions & Solves (combined) - STRICTLY only CT types
+    // 4. CT Questions & Solves (combined)
     const ctItems = courseResources.filter(r => 
       r.type === 'ct' || 
       r.type === 'ct_question' || 
-      r.type === 'ct_solve'
+      r.type === 'ct_solve' ||
+      (r.ctNumber !== undefined && r.ctNumber !== null) ||
+      (r.title && /\bct\b|\bclass test\b/i.test(r.title))
     );
 
-    // 5. Assignments & Solves (combined) - STRICTLY only assignment types
+    // 5. Assignments & Solves (combined)
     const assignmentItems = courseResources.filter(r => 
       r.type === 'assignment' || 
       r.type === 'assignment_question' || 
-      r.type === 'assignment_solve'
+      r.type === 'assignment_solve' ||
+      (r.assignmentNumber !== undefined && r.assignmentNumber !== null) ||
+      (r.title && /\bassign/i.test(r.title))
     );
 
-    // 6. Cheat Sheets (optional) - STRICTLY only cheatsheet
+    // 6. Cheat Sheets (optional)
     const cheatsheets = courseResources.filter(r => r.type === 'cheatsheet');
 
     return {
@@ -247,10 +208,32 @@ export const CourseDetailPage: React.FC = () => {
     });
   }, [categoryData]);
 
-  // Selected category items with sorting
+  // Selected category items with sub-filter and sorting
   const activeItems = useMemo(() => {
     if (!selectedCategory) return [];
-    const rawItems = [...categoryData[selectedCategory].items];
+    let rawItems = [...categoryData[selectedCategory].items];
+
+    if (subFilter !== 'all') {
+      if (selectedCategory === 'handnote') {
+        rawItems = rawItems.filter(item => detectNoteScope(item) === subFilter);
+      } else if (subFilter === 'question') {
+        rawItems = rawItems.filter(item => isQuestionItem(item));
+      } else if (subFilter === 'solve') {
+        rawItems = rawItems.filter(item => isSolutionItem(item));
+      } else if (subFilter.startsWith('ct')) {
+        const num = parseInt(subFilter.replace('ct', ''), 10);
+        rawItems = rawItems.filter(item => 
+          item.ctNumber === num || 
+          new RegExp(`\\bct\\s*${num}\\b|\\bct-${num}\\b`, 'i').test(item.title || '')
+        );
+      } else if (subFilter.startsWith('a')) {
+        const num = parseInt(subFilter.replace('a', ''), 10);
+        rawItems = rawItems.filter(item => 
+          item.assignmentNumber === num || 
+          new RegExp(`\\bassign(ment)?\\s*${num}\\b|\\ba${num}\\b`, 'i').test(item.title || '')
+        );
+      }
+    }
 
     return rawItems.sort((a, b) => {
       const scoreA = getTrimesterScore(a.trimesterCode || a.title);
@@ -260,7 +243,7 @@ export const CourseDetailPage: React.FC = () => {
       }
       return (b.uploadDate || '').localeCompare(a.uploadDate || '');
     });
-  }, [selectedCategory, categoryData, sortOrder]);
+  }, [selectedCategory, categoryData, subFilter, sortOrder]);
 
   if (!course) {
     return (
@@ -302,48 +285,27 @@ export const CourseDetailPage: React.FC = () => {
   return (
     <div className="space-y-8 pb-24 relative min-h-[80vh]">
       
-      {/* Back to All Courses or Categories Link (Single Unified Immediate Back) */}
+      {/* Back to All Courses Link */}
       <div className="flex items-center justify-between">
-        {selectedCategory ? (
-          <button
-            onClick={() => setSelectedCategory(null)}
-            className="inline-flex items-center space-x-2 text-xs font-semibold text-gray-500 hover:text-[#FF6600] transition-colors cursor-pointer group"
-          >
-            <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-            <span>Back to Categories</span>
-          </button>
-        ) : (
-          <Link
-            to="/"
-            className="inline-flex items-center space-x-2 text-xs font-semibold text-gray-500 hover:text-[#FF6600] transition-colors group"
-          >
-            <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-            <span>Back to All Courses</span>
-          </Link>
-        )}
+        <Link
+          to="/"
+          className="inline-flex items-center space-x-2 text-xs font-semibold text-gray-500 hover:text-[#FF6600] transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to All Courses</span>
+        </Link>
 
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => setRequestModalOpen(true)}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-orange-50 dark:bg-orange-950/40 text-[#FF6600] border border-orange-200 dark:border-orange-900/60 hover:bg-[#FF6600] hover:text-white transition-all shadow-sm"
-            title="Request missing notes or question solves for this course"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Request Notes</span>
-          </button>
-
-          <button
-            onClick={() => togglePinCourse(course.id)}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-              isPinned
-                ? 'bg-orange-500 text-white shadow-sm'
-                : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700'
-            }`}
-          >
-            <Bookmark className={`w-3.5 h-3.5 ${isPinned ? 'fill-white' : ''}`} />
-            <span>{isPinned ? 'Saved' : 'Pin Course'}</span>
-          </button>
-        </div>
+        <button
+          onClick={() => togglePinCourse(course.id)}
+          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+            isPinned
+              ? 'bg-orange-500 text-white shadow-sm'
+              : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700'
+          }`}
+        >
+          <Bookmark className={`w-3.5 h-3.5 ${isPinned ? 'fill-white' : ''}`} />
+          <span>{isPinned ? 'Saved' : 'Pin Course'}</span>
+        </button>
       </div>
 
       {/* Course Header Banner (Matches Screenshot 1 & 2) */}
@@ -393,61 +355,33 @@ export const CourseDetailPage: React.FC = () => {
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-5">
             {visibleCategories.map((key) => {
               const cat = categoryData[key];
-              const hasItems = cat.count > 0;
-
               return (
                 <button
                   key={key}
-                  disabled={!hasItems}
-                  onClick={() => {
-                    if (hasItems) {
-                      setSelectedCategory(key);
-                    }
-                  }}
-                  className={`group relative flex flex-col items-center justify-between text-center rounded-2xl p-5 sm:p-6 transition-all duration-200 ${
-                    hasItems
-                      ? 'bg-[#FFF9F5] dark:bg-[#201A16] border border-orange-200/70 dark:border-zinc-800/80 shadow-sm hover:shadow-xl hover:border-[#FF6600]/60 hover:-translate-y-1 cursor-pointer'
-                      : 'bg-[#FFF9F5]/40 dark:bg-[#201A16]/40 border border-orange-200/30 dark:border-zinc-800/40 opacity-70 dark:opacity-50 filter blur-[0.15px] grayscale-[15%] cursor-not-allowed select-none shadow-none pointer-events-auto'
-                  }`}
-                  title={hasItems ? `Explore ${cat.title}` : `${cat.title} - 0 Available (Not clickable)`}
+                  onClick={() => setSelectedCategory(key)}
+                  className="group relative flex flex-col items-center justify-between text-center bg-[#FFF9F5] dark:bg-[#201A16] border border-orange-200/70 dark:border-zinc-800/80 rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-xl hover:border-[#FF6600]/60 transition-all duration-200 hover:-translate-y-1 cursor-pointer"
                 >
                   {/* Top-Right Badge (e.g. MID, FINAL, NOTE, CT, ASSIGN) */}
-                  <span className={`absolute top-3.5 right-3.5 px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider shadow-sm ${
-                    hasItems 
-                      ? 'bg-[#C2671A] text-white' 
-                      : 'bg-stone-400 dark:bg-stone-600 text-stone-100 dark:text-stone-300'
-                  }`}>
+                  <span className="absolute top-3.5 right-3.5 px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-[#C2671A] text-white shadow-sm">
                     {cat.badge}
                   </span>
 
                   {/* Center Themed Scroll/Document Illustration */}
-                  <div className={`my-4 transition-transform ${hasItems ? 'transform group-hover:scale-105' : ''}`}>
+                  <div className="my-4 transform group-hover:scale-105 transition-transform">
                     <CategoryScrollIcon
                       type={cat.iconType}
-                      color={hasItems ? '#C2671A' : '#A8A29E'}
+                      color="#C2671A"
                       className="w-20 h-20 sm:w-24 sm:h-24"
                     />
                   </div>
 
-                  {/* Bottom Title & Total Count */}
-                  <div className={`w-full pt-2 border-t ${
-                    hasItems 
-                      ? 'border-orange-200/50 dark:border-zinc-800/80' 
-                      : 'border-stone-200/40 dark:border-zinc-800/40'
-                  }`}>
-                    <h3 className={`text-sm sm:text-base font-bold leading-snug ${
-                      hasItems 
-                        ? 'text-gray-900 dark:text-white' 
-                        : 'text-stone-600 dark:text-stone-400'
-                    }`}>
+                  {/* Bottom Title & Total Count (User Request: "total count ta raikho") */}
+                  <div className="w-full pt-2 border-t border-orange-200/50 dark:border-zinc-800/80">
+                    <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white leading-snug">
                       {cat.title}
                     </h3>
-                    <p className={`mt-1 text-xs font-semibold ${
-                      hasItems 
-                        ? 'text-[#C2671A] dark:text-orange-400' 
-                        : 'text-stone-400 dark:text-stone-500'
-                    }`}>
-                      {hasItems ? `${cat.count} ${cat.count === 1 ? 'Item' : 'Items'} Available` : '0 Available'}
+                    <p className="mt-1 text-xs font-semibold text-[#C2671A] dark:text-orange-400">
+                      {cat.count > 0 ? `${cat.count} ${cat.count === 1 ? 'Item' : 'Items'} Available` : '0 Available (Request)'}
                     </p>
                   </div>
                 </button>
@@ -466,17 +400,27 @@ export const CourseDetailPage: React.FC = () => {
           {/* Breadcrumb / Subheader (Screenshot 2) */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-gray-200 dark:border-zinc-800">
             
-            <div className="flex items-center space-x-2.5">
-              <span 
-                style={{ backgroundColor: cardColor }} 
-                className="w-2.5 h-2.5 rounded-full inline-block"
-              />
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
-                {categoryData[selectedCategory].title}
-              </h2>
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/60 text-[#FF6600]">
-                {activeItems.length}
-              </span>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setSelectedCategory(null)}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-200 hover:bg-[#FF6600] hover:text-white transition-colors shadow-sm"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Categories</span>
+              </button>
+
+              <div className="flex items-center space-x-2">
+                <span 
+                  style={{ backgroundColor: cardColor }} 
+                  className="w-2.5 h-2.5 rounded-full inline-block"
+                />
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+                  {categoryData[selectedCategory].title}
+                </h2>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/60 text-[#FF6600]">
+                  {activeItems.length}
+                </span>
+              </div>
             </div>
 
             {/* Sort Dropdown */}
@@ -492,6 +436,90 @@ export const CourseDetailPage: React.FC = () => {
 
           </div>
 
+          {/* Sub-Filter Tabs for Categories */}
+          {selectedCategory && categoryData[selectedCategory].items.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 pt-1 pb-1">
+              <span className="text-xs font-bold text-gray-500 dark:text-gray-400 mr-1">Filter:</span>
+
+              <button
+                onClick={() => setSubFilter('all')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  subFilter === 'all'
+                    ? 'bg-[#FF6600] text-white shadow-sm'
+                    : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 hover:border-orange-400'
+                }`}
+              >
+                All ({categoryData[selectedCategory].items.length})
+              </button>
+
+              
+
+              {/* CT specific tabs: CT 1, 2, 3, 4 */}
+              {selectedCategory === 'ct' && (
+                <>
+                  {[1, 2, 3, 4].map(num => (
+                    <button
+                      key={`ct${num}`}
+                      onClick={() => setSubFilter(`ct${num}`)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                        subFilter === `ct${num}`
+                          ? 'bg-[#FF6600] text-white shadow-sm'
+                          : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 hover:border-orange-400'
+                      }`}
+                    >
+                      🎯 CT {num}
+                    </button>
+                  ))}
+                </>
+              )}
+
+              {/* Assignment specific tabs: Assign 1, 2, 3 */}
+              {selectedCategory === 'assignment' && (
+                <>
+                  {[1, 2, 3].map(num => (
+                    <button
+                      key={`a${num}`}
+                      onClick={() => setSubFilter(`a${num}`)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                        subFilter === `a${num}`
+                          ? 'bg-[#FF6600] text-white shadow-sm'
+                          : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 hover:border-orange-400'
+                      }`}
+                    >
+                      📋 Assign {num}
+                    </button>
+                  ))}
+                </>
+              )}
+
+              {/* Question and Solution tabs for Mid, Final, CT, Assignment */}
+              {(selectedCategory === 'mid' || selectedCategory === 'final' || selectedCategory === 'ct' || selectedCategory === 'assignment') && (
+                <>
+                  <button
+                    onClick={() => setSubFilter('question')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      subFilter === 'question'
+                        ? 'bg-[#FF6600] text-white shadow-sm'
+                        : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 hover:border-orange-400'
+                    }`}
+                  >
+                    ❓ Questions ({categoryData[selectedCategory].questionCount})
+                  </button>
+                  <button
+                    onClick={() => setSubFilter('solve')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      subFilter === 'solve'
+                        ? 'bg-[#FF6600] text-white shadow-sm'
+                        : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 hover:border-orange-400'
+                    }`}
+                  >
+                    💡 Solutions ({categoryData[selectedCategory].solutionCount})
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
           {/* Grid of Resource Cards */}
           {activeItems.length === 0 ? (
             <EmptyState
@@ -502,9 +530,11 @@ export const CourseDetailPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
               {activeItems.map((item) => {
                 const isSol = isSolutionItem(item);
-                const isQues = isQuestionItem(item);
+                const codeBadge = item.trimesterCode 
+                  ? item.trimesterCode 
+                  : (item.ctNumber ? `CT ${item.ctNumber}` : (item.assignmentNumber ? `Assign ${item.assignmentNumber}` : (item.type === 'handnote' ? 'NOTE' : 'PDF')));
                 const readableSemester = item.trimesterCode ? formatTrimesterCode(item.trimesterCode) : '';
-                const showBadgeRow = selectedCategory !== 'handnote' && Boolean(item.ctNumber || item.assignmentNumber || isSol || isQues);
+                const scope = detectNoteScope(item);
 
                 return (
                   <div
@@ -514,36 +544,67 @@ export const CourseDetailPage: React.FC = () => {
                     className="group relative flex flex-col justify-between text-left bg-white dark:bg-[#1E1E1E] border border-gray-200/80 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-1 cursor-pointer"
                   >
                     <div>
-                      {/* Top Row Badges (Only shown when there are contextual badges) */}
-                      {showBadgeRow && (
-                        <div className="flex items-center justify-between gap-2 mb-3">
-                          {/* CT or Assignment Badge */}
-                          {item.ctNumber ? (
-                            <span className="px-2.5 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800 shadow-sm">
-                              🎯 CT {item.ctNumber}
+                      {/* Top Row: Trimester Pill + Question/Solution or Scope Badge */}
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <span className="px-2.5 py-0.5 rounded-full bg-[#FDF0E7] dark:bg-zinc-800 border border-[#F6D3BC] dark:border-zinc-700 text-[#C2671A] dark:text-orange-400 font-extrabold text-xs tracking-wide shadow-inner">
+                          {codeBadge}
+                        </span>
+
+                        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                          {/* CT Number Badge */}
+                          {item.ctNumber && (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800 shadow-sm">
+                              CT {item.ctNumber}
                             </span>
-                          ) : item.assignmentNumber ? (
-                            <span className="px-2.5 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-indigo-100 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800 shadow-sm">
-                              📋 ASSIGN {item.assignmentNumber}
+                          )}
+                          
+                          {/* Assignment Number Badge */}
+                          {item.assignmentNumber && (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-indigo-100 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800 shadow-sm">
+                              ASSIGN {item.assignmentNumber}
                             </span>
-                          ) : (
-                            <span />
                           )}
 
-                          {/* Question vs Solution Badge */}
-                          <div className="flex items-center gap-1.5 justify-end">
-                            {isSol ? (
+                          {/* Handnote Scope Badge */}
+                          {selectedCategory === 'handnote' && (
+                            <>
+                              {scope === 'mid' && (
+                                <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-blue-100 text-blue-700 dark:bg-blue-950/70 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800 shadow-sm">
+                                  MID TERM
+                                </span>
+                              )}
+                              {scope === 'final' && (
+                                <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-purple-100 text-purple-700 dark:bg-purple-950/70 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800 shadow-sm">
+                                  FINAL TERM
+                                </span>
+                              )}
+                              {scope === 'topicwise' && (
+                                <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800 shadow-sm">
+                                  TOPICWISE
+                                </span>
+                              )}
+                              {scope === 'full' && (
+                                <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800 shadow-sm">
+                                  FULL SYLLABUS
+                                </span>
+                              )}
+                            </>
+                          )}
+
+                          {/* Question vs Solution Badge (for Mid, Final, CT, Assignment) */}
+                          {selectedCategory !== 'handnote' && (
+                            isSol ? (
                               <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800 shadow-sm flex items-center space-x-1">
                                 <span>💡 SOLVE</span>
                               </span>
-                            ) : isQues ? (
+                            ) : (
                               <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-sky-100 text-sky-700 dark:bg-sky-950/70 dark:text-sky-300 border border-sky-200/60 dark:border-sky-800 shadow-sm flex items-center space-x-1">
                                 <span>❓ QUESTION</span>
                               </span>
-                            ) : null}
-                          </div>
+                            )
+                          )}
                         </div>
-                      )}
+                      </div>
 
                       {/* Note Title / Topic Name (Prominent & Clear!) */}
                       <h4 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white group-hover:text-[#FF6600] transition-colors leading-snug line-clamp-2">
@@ -571,7 +632,7 @@ export const CourseDetailPage: React.FC = () => {
                         {item.contributor ? `By ${item.contributor.name}` : 'UIU Community'}
                       </span>
                       <span className="text-[11px] font-bold text-[#FF6600] group-hover:translate-x-0.5 transition-transform flex items-center space-x-1">
-                        <span>{getActionLabel(item)}</span>
+                        <span>Read PDF</span>
                         <span>&rarr;</span>
                       </span>
                     </div>
