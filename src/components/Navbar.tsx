@@ -12,7 +12,8 @@ import {
   Menu, 
   X, 
   Sparkles, 
-  Layers 
+  Layers,
+  HelpCircle 
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useData } from '../context/DataContext';
@@ -54,6 +55,7 @@ export const Navbar: React.FC = () => {
   const navLinks = [
     { label: 'All Courses', path: '/', icon: Layers },
     { label: 'Contributors', path: '/contributors', icon: Users },
+    { label: 'How to Use', path: '/how-to-use', icon: HelpCircle },
     { label: 'About Creator', path: '/about', icon: Info },
   ];
 

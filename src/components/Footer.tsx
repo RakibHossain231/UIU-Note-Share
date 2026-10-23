@@ -73,6 +73,11 @@ export const Footer: React.FC = () => {
                 </Link>
               </li>
               <li>
+                <Link to="/how-to-use" className="hover:text-[#FF6600] dark:hover:text-orange-400 transition-colors">
+                  How to Use & Share Notes 📖
+                </Link>
+              </li>
+              <li>
                 <Link to="/about" className="hover:text-[#FF6600] dark:hover:text-orange-400 transition-colors">
                   About the Creator & Vision
                 </Link>

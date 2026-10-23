@@ -9,6 +9,7 @@ import { analytics } from './services/analyticsService';
 import { HomePage } from './pages/HomePage';
 import { CourseDetailPage } from './pages/CourseDetailPage';
 import { ContributorsPage } from './pages/ContributorsPage';
+import { HowToUsePage } from './pages/HowToUsePage';
 import { AboutPage } from './pages/AboutPage';
 import { AdminDashboard } from './pages/AdminDashboard';
 
@@ -34,6 +35,7 @@ export const App: React.FC = () => {
                 <Route path="/" element={<HomePage />} />
                 <Route path="/course/:courseId" element={<CourseDetailPage />} />
                 <Route path="/contributors" element={<ContributorsPage />} />
+                <Route path="/how-to-use" element={<HowToUsePage />} />
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
