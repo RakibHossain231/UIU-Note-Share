@@ -352,15 +352,40 @@ export const HowToUsePage: React.FC = () => {
             </ol>
           </div>
 
-          {/* Contributor Action Button: Submit Notes Now */}
-          <div className="text-center pt-2">
-            <button
-              onClick={() => setIsContributeModalOpen(true)}
-              className="inline-flex items-center space-x-2 px-7 py-3.5 rounded-2xl bg-[#FF6600] text-white font-bold text-sm hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/25 hover:scale-105 active:scale-95 cursor-pointer"
-            >
-              <UploadCloud className="w-4 h-4" />
-              <span>Submit Your Notes Now</span>
-            </button>
+          {/* Contributor Action Banner */}
+          <div className="relative overflow-hidden bg-gradient-to-r from-[#FF6600] to-amber-600 rounded-3xl p-8 sm:p-12 text-white shadow-xl">
+            <div className="relative z-10 max-w-2xl space-y-4">
+              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-bold text-white">
+                <Sparkles className="w-3.5 h-3.5 text-yellow-200" />
+                <span>Join the UIU Student Movement</span>
+              </div>
+
+              <h2 className="text-2xl sm:text-4xl font-extrabold leading-tight">
+                Ready to Help Your Fellow UIUans?
+              </h2>
+
+              <p className="text-sm sm:text-base text-orange-100 leading-relaxed">
+                A single note shared by you can save a classmate's entire semester. Join the student-led knowledge-sharing movement today.
+              </p>
+
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <button
+                  onClick={() => setIsContributeModalOpen(true)}
+                  className="flex items-center space-x-2 px-6 py-3 rounded-2xl bg-white text-orange-600 font-bold text-sm shadow-md hover:bg-orange-50 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                >
+                  <UploadCloud className="w-4 h-4" />
+                  <span>Submit Notes / Direct PDF</span>
+                </button>
+
+                <Link
+                  to="/contributors"
+                  className="flex items-center space-x-2 px-6 py-3 rounded-2xl bg-black/20 hover:bg-black/30 backdrop-blur-md text-white font-bold text-sm transition-all border border-white/20"
+                >
+                  <Users className="w-4 h-4" />
+                  <span>View Wall of Contributors</span>
+                </Link>
+              </div>
+            </div>
           </div>
         </section>
       )}
@@ -409,43 +434,7 @@ export const HowToUsePage: React.FC = () => {
         </section>
       )}
 
-      {/* ========================================================================= */}
-      {/* Bottom CTA Banner */}
-      {/* ========================================================================= */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-[#FF6600] to-amber-600 rounded-3xl p-8 sm:p-12 text-white shadow-xl">
-        <div className="relative z-10 max-w-2xl space-y-4">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-bold text-white">
-            <Sparkles className="w-3.5 h-3.5 text-yellow-200" />
-            <span>Join the UIU Student Movement</span>
-          </div>
 
-          <h2 className="text-2xl sm:text-4xl font-extrabold leading-tight">
-            Ready to Help Your Fellow UIUans?
-          </h2>
-
-          <p className="text-sm sm:text-base text-orange-100 leading-relaxed">
-            A single note shared by you can save a classmate's entire semester. Join the student-led knowledge-sharing movement today.
-          </p>
-
-          <div className="flex flex-wrap items-center gap-3 pt-2">
-            <button
-              onClick={() => setIsContributeModalOpen(true)}
-              className="flex items-center space-x-2 px-6 py-3 rounded-2xl bg-white text-orange-600 font-bold text-sm shadow-md hover:bg-orange-50 transition-all hover:scale-105 active:scale-95 cursor-pointer"
-            >
-              <UploadCloud className="w-4 h-4" />
-              <span>Submit Notes / Direct PDF</span>
-            </button>
-
-            <Link
-              to="/contributors"
-              className="flex items-center space-x-2 px-6 py-3 rounded-2xl bg-black/20 hover:bg-black/30 backdrop-blur-md text-white font-bold text-sm transition-all border border-white/20"
-            >
-              <Users className="w-4 h-4" />
-              <span>View Wall of Contributors</span>
-            </Link>
-          </div>
-        </div>
-      </div>
 
       {/* Contribute Modal */}
       <ContributeModal
