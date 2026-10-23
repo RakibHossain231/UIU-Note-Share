@@ -123,6 +123,8 @@ export const StorageService = {
     // Update contributor count if applicable
     if (resource.contributor?.id) {
       this.incrementContributorCount(resource.contributor.id);
+    } else if (resource.contributor?.name) {
+      this.incrementContributorCount(resource.contributor.name);
     }
   },
 
@@ -175,9 +177,12 @@ export const StorageService = {
     this.saveContributors(list);
   },
 
-  incrementContributorCount(contributorId: string): void {
+  incrementContributorCount(contributorIdOrName: string): void {
     const list = this.getContributors().map(c => {
-      if (c.id === contributorId) {
+      if (
+        c.id === contributorIdOrName || 
+        (c.name && c.name.trim().toLowerCase() === contributorIdOrName.trim().toLowerCase())
+      ) {
         return { ...c, contributionsCount: (c.contributionsCount || 0) + 1 };
       }
       return c;

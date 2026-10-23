@@ -21,11 +21,24 @@ export const ContributorsPage: React.FC = () => {
   const [copiedLink, setCopiedLink] = useState(false);
   const [isContributeModalOpen, setIsContributeModalOpen] = useState(false);
 
-  // Filter contributors by selected department
+  // Filter contributors by selected department and sort by contributions count
   const filteredContributors = useMemo(() => {
-    if (selectedDepartment === 'All') return contributors;
-    return contributors.filter(c => c.department.toLowerCase() === selectedDepartment.toLowerCase());
-  }, [contributors, selectedDepartment]);
+    const list = selectedDepartment === 'All' 
+      ? [...contributors] 
+      : contributors.filter(c => c.department.toLowerCase() === selectedDepartment.toLowerCase());
+
+    return list.sort((a, b) => {
+      const aCount = Math.max(
+        resources.filter(r => (r.contributor?.id && r.contributor.id === a.id) || (r.contributor?.name && a.name && r.contributor.name.trim().toLowerCase() === a.name.trim().toLowerCase())).length,
+        a.contributionsCount || 0
+      );
+      const bCount = Math.max(
+        resources.filter(r => (r.contributor?.id && r.contributor.id === b.id) || (r.contributor?.name && b.name && r.contributor.name.trim().toLowerCase() === b.name.trim().toLowerCase())).length,
+        b.contributionsCount || 0
+      );
+      return bCount - aCount;
+    });
+  }, [contributors, resources, selectedDepartment]);
 
   const renderSocialIcon = (type?: string) => {
     switch (type) {
@@ -107,8 +120,11 @@ export const ContributorsPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredContributors.map((contrib) => {
-          const contribNotes = resources.filter(r => r.contributor?.id === contrib.id || r.contributor?.name.toLowerCase() === contrib.name.toLowerCase());
-          const totalShared = contrib.contributionsCount || contribNotes.length;
+          const contribNotes = resources.filter(r => 
+            (r.contributor?.id && r.contributor.id === contrib.id) || 
+            (r.contributor?.name && contrib.name && r.contributor.name.trim().toLowerCase() === contrib.name.trim().toLowerCase())
+          );
+          const totalShared = Math.max(contribNotes.length, contrib.contributionsCount || 0);
 
           return (
             <div

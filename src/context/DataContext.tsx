@@ -152,8 +152,29 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // 3. Sync Contributors
       const cloudContributors = await SupabaseService.getContributors();
       if (cloudContributors && cloudContributors.length > 0) {
-        setContributors(cloudContributors);
-        StorageService.saveContributors(cloudContributors);
+        const activeResources = cloudResources || StorageService.getResources();
+        const reconciledContributors = cloudContributors.map(c => {
+          const actualNoteCount = activeResources.filter(r => 
+            (r.contributor?.id && r.contributor.id === c.id) ||
+            (r.contributor?.name && c.name && r.contributor.name.trim().toLowerCase() === c.name.trim().toLowerCase())
+          ).length;
+          const accurateCount = Math.max(actualNoteCount, c.contributionsCount || 0);
+          return {
+            ...c,
+            contributionsCount: accurateCount
+          };
+        });
+
+        setContributors(reconciledContributors);
+        StorageService.saveContributors(reconciledContributors);
+
+        // Sync back any contributor whose database count was out of date
+        for (const rc of reconciledContributors) {
+          const orig = cloudContributors.find(c => c.id === rc.id);
+          if (orig && (orig.contributionsCount || 0) !== rc.contributionsCount) {
+            SupabaseService.upsertContributor(rc).catch(console.error);
+          }
+        }
       } else if (cloudContributors && cloudContributors.length === 0) {
         // Seed founding contributor Rakib Hossain
         const initContrib = StorageService.getContributors()[0];
@@ -225,21 +246,98 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const handleAddResource = async (res: ResourceItem) => {
     StorageService.addResource(res);
-    setResources(StorageService.getResources());
-    setContributors(StorageService.getContributors());
+    const updatedResources = StorageService.getResources();
+    setResources(updatedResources);
+
+    // Update contributor's contribution count both locally and in Supabase
+    if (res.contributor) {
+      const allContribs = StorageService.getContributors();
+      const targetContrib = allContribs.find(c => 
+        (res.contributor?.id && c.id === res.contributor.id) || 
+        (c.name && res.contributor?.name && c.name.trim().toLowerCase() === res.contributor.name.trim().toLowerCase())
+      );
+      if (targetContrib) {
+        const actualCount = updatedResources.filter(r => 
+          (r.contributor?.id && r.contributor.id === targetContrib.id) ||
+          (r.contributor?.name && targetContrib.name && r.contributor.name.trim().toLowerCase() === targetContrib.name.trim().toLowerCase())
+        ).length;
+        const newCount = Math.max(actualCount, (targetContrib.contributionsCount || 0) + 1);
+        const updatedContrib: Contributor = {
+          ...targetContrib,
+          contributionsCount: newCount
+        };
+        StorageService.updateContributor(updatedContrib);
+        setContributors(StorageService.getContributors());
+        await SupabaseService.upsertContributor(updatedContrib);
+      } else {
+        setContributors(StorageService.getContributors());
+      }
+    } else {
+      setContributors(StorageService.getContributors());
+    }
+
     await SupabaseService.insertResource(res);
   };
 
   const handleUpdateResource = async (res: ResourceItem) => {
     StorageService.updateResource(res);
-    setResources(StorageService.getResources());
+    const updatedResources = StorageService.getResources();
+    setResources(updatedResources);
+
+    // Reconcile contributor counts for all contributors
+    const allContribs = StorageService.getContributors();
+    const updatedContribs = allContribs.map(c => {
+      const count = updatedResources.filter(r => 
+        (r.contributor?.id && r.contributor.id === c.id) ||
+        (r.contributor?.name && c.name && r.contributor.name.trim().toLowerCase() === c.name.trim().toLowerCase())
+      ).length;
+      return {
+        ...c,
+        contributionsCount: Math.max(count, c.contributionsCount || 0)
+      };
+    });
+    StorageService.saveContributors(updatedContribs);
+    setContributors(updatedContribs);
+
     await SupabaseService.insertResource(res);
+    if (res.contributor) {
+      const match = updatedContribs.find(c => 
+        (res.contributor?.id && c.id === res.contributor.id) ||
+        (c.name && res.contributor?.name && c.name.trim().toLowerCase() === res.contributor.name.trim().toLowerCase())
+      );
+      if (match) {
+        await SupabaseService.upsertContributor(match);
+      }
+    }
   };
 
   const handleDeleteResource = async (id: string) => {
+    const resToDelete = resources.find(r => r.id === id);
     StorageService.deleteResource(id);
-    setResources(StorageService.getResources());
+    const updatedResources = StorageService.getResources();
+    setResources(updatedResources);
     await SupabaseService.deleteResource(id);
+
+    if (resToDelete?.contributor) {
+      const allContribs = StorageService.getContributors();
+      const targetContrib = allContribs.find(c => 
+        (resToDelete.contributor?.id && c.id === resToDelete.contributor.id) || 
+        (c.name && resToDelete.contributor?.name && c.name.trim().toLowerCase() === resToDelete.contributor.name.trim().toLowerCase())
+      );
+      if (targetContrib) {
+        const remainingCount = updatedResources.filter(r => 
+          (r.contributor?.id && r.contributor.id === targetContrib.id) ||
+          (r.contributor?.name && targetContrib.name && r.contributor.name.trim().toLowerCase() === targetContrib.name.trim().toLowerCase())
+        ).length;
+        const updatedContrib: Contributor = {
+          ...targetContrib,
+          contributionsCount: remainingCount
+        };
+        StorageService.updateContributor(updatedContrib);
+        setContributors(StorageService.getContributors());
+        await SupabaseService.upsertContributor(updatedContrib);
+      }
+    }
   };
 
   const handleAddContributor = async (contrib: Contributor) => {

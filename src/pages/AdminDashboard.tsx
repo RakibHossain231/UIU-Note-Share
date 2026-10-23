@@ -1278,7 +1278,10 @@ create policy "Allow delete from contributions" on storage.objects for delete us
                       {c.department} • {c.batch || 'Student'}
                     </p>
                     <span className="text-[10px] font-semibold text-[#FF6600]">
-                      {c.contributionsCount || 0} contributions
+                      {Math.max(
+                        resources.filter(r => (r.contributor?.id && r.contributor.id === c.id) || (r.contributor?.name && c.name && r.contributor.name.trim().toLowerCase() === c.name.trim().toLowerCase())).length,
+                        c.contributionsCount || 0
+                      )} contributions
                     </span>
                   </div>
                 </div>
