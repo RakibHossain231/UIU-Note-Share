@@ -5,23 +5,16 @@ import {
   Search, 
   Eye, 
   Download, 
-  Share2, 
   Sparkles, 
   UploadCloud, 
   FileText, 
-  CheckCircle2, 
-  HelpCircle, 
-  ChevronRight, 
-  ArrowRight, 
-  ExternalLink, 
   Layers, 
   Users, 
   ShieldCheck, 
   MessageSquarePlus, 
-  FileCheck,
   AlertCircle,
-  Copy,
-  ChevronDown
+  ChevronDown,
+  ArrowRight
 } from 'lucide-react';
 import { ContributeModal } from '../components/ContributeModal';
 
@@ -36,24 +29,24 @@ export const HowToUsePage: React.FC = () => {
 
   const faqs = [
     {
-      q: 'নোট শেয়ার করতে কি কোনো অ্যাকাউন্ট খুলতে হবে বা ফি লাগবে?',
-      a: 'না, কোনো অ্যাকাউন্ট বা রেজিস্ট্রেশনের প্রয়োজন নেই এবং এটি সম্পূর্ণ ফ্রি। যেকোনো শিক্ষার্থী সরাসরি নোট পড়তে এবং শেয়ার করতে পারবেন।'
+      q: 'Do I need an account or login to read or share notes?',
+      a: 'No! UIU Note Share is 100% free and open. No account registration or login is required to browse, read, download, or contribute notes.'
     },
     {
-      q: 'আমার গুগল ড্রাইভ লিংক কি অন্য সাধারণ ইউজাররা পেয়ে যাবে?',
-      a: 'না। আপনার ড্রাইভ লিংক সুরক্ষিত থাকবে। শিক্ষার্থীরা আমাদের নিজস্ব ইন-অ্যাপ রিডারে সুরক্ষিতভাবে ফাইল পড়বে এবং স্বয়ংক্রিয় ওয়াটারমার্কসহ ডাউনলোড করতে পারবে।'
+      q: 'Will my raw Google Drive link be exposed to other students?',
+      a: 'No. Your Google Drive URL is protected. Students view notes inside our secure in-app reader and download files with automated watermarks without seeing raw Drive URLs.'
     },
     {
-      q: 'কোন কোন ডিপার্টমেন্টের নোট শেয়ার করা যাবে?',
-      a: 'CSE, Data Science, EEE, BBA এবং Civil সহ UIU-এর যেকোনো ডিপার্টমেন্টের লেকচার হ্যান্ডনোট, মিড/ফাইনাল সলভ এবং সিটি প্রশ্ন শেয়ার করা যাবে।'
+      q: 'Which departments can I share notes for?',
+      a: 'All UIU departments are supported! You can share handnotes, mid/final solves, and CT questions for CSE, Data Science, EEE, BBA, Civil, and general education courses.'
     },
     {
-      q: 'নোট সাবমিট করার পর কতক্ষণে অ্যাপ্রুভ ও পাবলিশ হয়?',
-      a: 'অ্যাডমিন টিম সাধারণত কয়েক ঘণ্টার মধ্যে ফাইলটি যাচাই করে অ্যাপ্রুভ করে। অ্যাপ্রুভ হওয়ামাত্রই তা ওয়েবসাইটে এবং Wall of Contributors-এ লাইভ হয়ে যায়।'
+      q: 'How long does it take for a submitted note to be approved?',
+      a: 'The admin team usually reviews and approves submissions within a few hours. Once approved, the note appears live in the course and on the Wall of Contributors immediately.'
     },
     {
-      q: 'নোট ডাউনলোড করলে আমার নাম কি ফাইলে থাকবে?',
-      a: 'হ্যাঁ! কেউ আপনার শেয়ার করা নোট ডাউনলোড করলে স্বয়ংক্রিয়ভাবে প্রতিটি পেজের ফুটারে "UIU Note Share • Contributed by [আপনার নাম]" খোদাই হয়ে যাবে।'
+      q: 'Will my name be stamped on the downloaded PDFs?',
+      a: 'Yes! When anyone downloads your shared note, each page automatically displays a neat footer watermark: "UIU Note Share • Contributed by [Your Name]".'
     }
   ];
 
@@ -72,7 +65,7 @@ export const HowToUsePage: React.FC = () => {
         </h1>
 
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 leading-relaxed">
-          UIU Note Share প্ল্যাটফর্মটি কীভাবে সহজে ব্যবহার করবেন এবং কীভাবে আপনার মূল্যবান নোট শেয়ার করে কন্ট্রিবিউটর হবেন — তার পূর্ণাঙ্গ ব্যবহার নির্দেশিকা।
+          A beginner-friendly guide on how to discover study notes, exam solves, and how to share your own notes to get credited on the platform.
         </p>
 
         {/* Segment Switcher */}
@@ -86,7 +79,7 @@ export const HowToUsePage: React.FC = () => {
             }`}
           >
             <span>🎓 For Students</span>
-            <span className="text-[11px] opacity-80">(নোট পড়ার নিয়ম)</span>
+            <span className="text-[11px] opacity-80">(Browse & Read)</span>
           </button>
 
           <button
@@ -98,7 +91,7 @@ export const HowToUsePage: React.FC = () => {
             }`}
           >
             <span>✍️ For Contributors</span>
-            <span className="text-[11px] opacity-80">(নোট শেয়ার করার নিয়ম)</span>
+            <span className="text-[11px] opacity-80">(Share Notes)</span>
           </button>
 
           <button
@@ -110,7 +103,7 @@ export const HowToUsePage: React.FC = () => {
             }`}
           >
             <span>❓ FAQs</span>
-            <span className="text-[11px] opacity-80">(সাধারণ জিজ্ঞাসা)</span>
+            <span className="text-[11px] opacity-80">(Common Questions)</span>
           </button>
         </div>
       </section>
@@ -122,10 +115,10 @@ export const HowToUsePage: React.FC = () => {
         <section className="space-y-8 animate-in fade-in duration-300">
           <div className="text-center max-w-xl mx-auto space-y-1">
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-              শিক্ষার্থী হিসেবে কীভাবে প্রয়োজনীয় নোট পাবেন?
+              How Students Can Find & Read Notes
             </h2>
             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-              পরীক্ষার আগের রাতে কোনো গ্রুপে না খুঁজে ৫টি সহজ ধাপে মুহূর্তের মধ্যে সব নোট পেয়ে যান:
+              Get exam solves, handwritten lecture notes, and CT questions in 5 easy steps:
             </p>
           </div>
 
@@ -139,14 +132,14 @@ export const HowToUsePage: React.FC = () => {
                 </div>
                 <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center space-x-2">
                   <Search className="w-4 h-4 text-[#FF6600]" />
-                  <span>কোর্স বা সাবজেক্ট খুঁজুন</span>
+                  <span>Search Your Course</span>
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                  হোমপেজের সার্চবারে কোর্সের কোড (যেমন: <strong>CSE 2118</strong>, <strong>MATH 1101</strong>) লিখুন অথবা ডিপার্টমেন্ট ফিল্টার (CSE, DS, EEE, BBA, Civil) দিয়ে সিলেক্ট করুন।
+                  Type your course code (e.g., <strong>CSE 2118</strong>, <strong>MATH 1101</strong>, or <em>Algorithms</em>) into the search bar, or use the department filter (CSE, DS, EEE, BBA, Civil) to find your course.
                 </p>
               </div>
               <div className="text-[11px] text-orange-600 dark:text-orange-400 font-semibold bg-orange-50 dark:bg-orange-950/30 p-2.5 rounded-xl">
-                💡 টিপস: আপনি কোর্স কার্ডের পিন (📌) আইকনে চাপ দিলে সেটি 'Saved' লিস্টে বুকমার্ক হয়ে থাকবে।
+                💡 Quick Tip: Click the bookmark (📌) icon on any course card to save it to your "Saved" list for instant access.
               </div>
             </div>
 
@@ -158,14 +151,14 @@ export const HowToUsePage: React.FC = () => {
                 </div>
                 <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center space-x-2">
                   <Layers className="w-4 h-4 text-blue-500" />
-                  <span>ক্যাটাগরি বেছে নিন</span>
+                  <span>Choose Note Category</span>
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                  কোর্সে প্রবেশের পর উপরে ক্যাটাগরি ট্যাব রয়েছে: <strong>Handnotes</strong>, <strong>Mid Questions & Solves</strong>, <strong>Final Solves</strong>, <strong>CT Solves</strong> এবং <strong>Assignments</strong>।
+                  Open your course and switch between tabs: <strong>Handnotes</strong>, <strong>Mid Questions & Solves</strong>, <strong>Final Solves</strong>, <strong>CT Solves</strong>, and <strong>Assignments</strong>.
                 </p>
               </div>
               <div className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-950/30 p-2.5 rounded-xl">
-                🔍 ট্রাইমেস্টার ট্যাগ (যেমন: Trim 231, 241) দেখে সাম্প্রতিক সলভগুলো সহজে চিনে নিন।
+                🔍 Trimester tags (e.g., Trim 231, 241) help you identify the most recent exam solutions at a glance.
               </div>
             </div>
 
@@ -177,14 +170,14 @@ export const HowToUsePage: React.FC = () => {
                 </div>
                 <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center space-x-2">
                   <Eye className="w-4 h-4 text-emerald-500" />
-                  <span>ইন-অ্যাপ রিডারে পড়ুন</span>
+                  <span>Read In-App (No Redirects)</span>
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                  <strong>"Open in Reader"</strong> বাটনে ক্লিক করলে ব্রাউজারেই কোনো এক্সটার্নাল লিংকে না গিয়ে ফুলস্ক্রিন ও জুম কন্ট্রোলসহ দ্রুত ফাইল পড়া যাবে।
+                  Click <strong>"Open in Reader"</strong> to view any PDF, document, or image directly inside the browser with full-screen, zoom in/out, and rotation controls.
                 </p>
               </div>
               <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-950/30 p-2.5 rounded-xl">
-                🌙 রাতে পড়ার জন্য ইন-ভিউয়ার <strong>Dark Mode Invert</strong> বাটন রয়েছে চোখের সুরক্ষায়।
+                🌙 Eye Comfort: Toggle the built-in <strong>Dark Mode</strong> button inside the viewer for comfortable night studying.
               </div>
             </div>
 
@@ -196,14 +189,14 @@ export const HowToUsePage: React.FC = () => {
                 </div>
                 <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center space-x-2">
                   <Download className="w-4 h-4 text-purple-500" />
-                  <span>১-ক্লিকে ডাউনলোড করুন</span>
+                  <span>1-Click Fast Download</span>
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                  <strong>Download</strong> বাটনে ক্লিক করলেই স্বয়ংক্রিয়ভাবে কন্ট্রিবিউটরের নামসহ আসল ওয়াটারমার্ক ফাইল সেভ হয়ে যাবে। কোনো রিডাইরেকশন বা পপ-আপ অ্যাড নেই।
+                  Click <strong>Download</strong> to save the file with the contributor attribution watermark. There are zero ads, no pop-ups, and no countdown timers.
                 </p>
               </div>
               <div className="text-[11px] text-purple-600 dark:text-purple-400 font-semibold bg-purple-50 dark:bg-purple-950/30 p-2.5 rounded-xl">
-                📦 এছাড়া <strong>"Download Course as ZIP"</strong> দিয়ে সব ফাইল একসাথেও নামানো যায়।
+                📦 You can also click <strong>"Download Course as ZIP"</strong> to download all notes in a single bundle.
               </div>
             </div>
 
@@ -215,14 +208,14 @@ export const HowToUsePage: React.FC = () => {
                 </div>
                 <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center space-x-2">
                   <MessageSquarePlus className="w-4 h-4 text-amber-500" />
-                  <span>নোট না পেলে রিকোয়েস্ট করুন</span>
+                  <span>Request Notes if Missing</span>
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                  আপনার প্রয়োজনীয় কোর্সের মিড/ফাইনাল সলভ বা হ্যান্ডনোট এখনো আপলোড না হয়ে থাকলে কোর্সের ভেতর <strong>"Request Note"</strong> বাটনে ক্লিক করে নির্দিষ্ট টপিক বা টার্মের রিকোয়েস্ট জানাতে পারেন।
+                  Cannot find a specific midterm solve, final answer script, or lecture note? Click the <strong>"Request Note"</strong> button inside the course to notify fellow students and contributors.
                 </p>
               </div>
               <div className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold bg-amber-50 dark:bg-amber-950/30 p-2.5 rounded-xl">
-                ⚡ অ্যাডমিন ও অন্যান্য সিনিয়র কন্ট্রিবিউটররা রিকোয়েস্ট দেখে দ্রুত তা আপলোড করার চেষ্টা করেন।
+                ⚡ Contributors and senior students check note requests frequently to upload solutions.
               </div>
             </div>
 
@@ -247,10 +240,10 @@ export const HowToUsePage: React.FC = () => {
         <section className="space-y-8 animate-in fade-in duration-300">
           <div className="text-center max-w-xl mx-auto space-y-1">
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-              কীভাবে আপনার নোট শেয়ার করবেন ও ক্রেডিট পাবেন?
+              How to Share Your Notes & Get Credited
             </h2>
             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-              আপনার খাতার নোট বা সলভটি অন্য সহপাঠীদের জন্য শেয়ার করতে ৩টি সহজ ধাপ অনুসরণ করুন:
+              Help hundreds of UIU students by sharing your clean lecture notes or past exam solves in 3 easy steps:
             </p>
           </div>
 
@@ -264,13 +257,13 @@ export const HowToUsePage: React.FC = () => {
               </div>
               <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center space-x-2">
                 <FileText className="w-4 h-4 text-[#FF6600]" />
-                <span>নোট তৈরি ও স্ক্যান করা</span>
+                <span>Scan & Prepare Notes</span>
               </h3>
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                আপনার খাতার হ্যান্ডনোট, মিড/ফাইনাল পরীক্ষার প্রশ্ন সমাধান বা সিটি সলভ মোবাইল স্ক্যানার অ্যাপ (যেমন <strong>Adobe Scan</strong>, <strong>CamScanner</strong> ইত্যাদি) দিয়ে পরিষ্কারভাবে সোজা করে PDF বানিয়ে নিন।
+                Take clear, upright photos of your handwritten notes or exam papers using a phone scanning app (e.g. <strong>Adobe Scan</strong>, <strong>CamScanner</strong>), and save them as a single clean PDF file.
               </p>
               <div className="text-[11px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-zinc-800/60 p-3 rounded-2xl border border-gray-100 dark:border-zinc-800">
-                ✨ পেইজগুলো ক্রমানুসারে (Page 1, 2, 3...) থাকলে শিক্ষার্থীদের পড়তে অনেক সুবিধা হয়।
+                ✨ Keeping pages in proper sequence (Page 1, 2, 3...) makes it much easier for students to study.
               </div>
             </div>
 
@@ -281,13 +274,13 @@ export const HowToUsePage: React.FC = () => {
               </div>
               <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center space-x-2">
                 <UploadCloud className="w-4 h-4 text-amber-500" />
-                <span>ড্রাইভ লিংক বা ফাইল সাবমিট</span>
+                <span>Submit Form & Drive Link</span>
               </h3>
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                ওয়েবসাইটের <strong>"Submit Notes"</strong> বাটনে চাপ দিন। আপনার কোর্স, ট্রাইমেস্টার (যেমন 241, 242) সিলেক্ট করুন এবং গুগল ড্রাইভ শেয়ার লিংক দিন (অথবা সরাসরি PDF আপলোড করুন)।
+                Click the <strong>"Submit Notes"</strong> button on the site. Choose your course, trimester code (e.g., 241, 242), and provide your Google Drive link or upload the PDF directly.
               </p>
               <div className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold bg-amber-50 dark:bg-amber-950/30 p-3 rounded-2xl border border-amber-200/50 dark:border-amber-900/30">
-                ⚠️ ড্রাইভ লিংকের পারমিশন <strong>"Anyone with the link can view"</strong> করে দিতে ভুলবেন না!
+                ⚠️ Make sure your Google Drive link permission is set to <strong>"Anyone with the link can view"</strong>!
               </div>
             </div>
 
@@ -298,13 +291,13 @@ export const HowToUsePage: React.FC = () => {
               </div>
               <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center space-x-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                <span>ভেরিফিকেশন ও পাবলিক ক্রেডিট</span>
+                <span>Verification & Recognition</span>
               </h3>
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                অ্যাডমিন ফাইলটি দ্রুত ভেরিফাই করে অ্যাপ্রুভ করবে। অ্যাপ্রুভ হওয়ামাত্রই <strong>Wall of Contributors</strong>-এ আপনার প্রোফাইল ও নাম যুক্ত হবে এবং মোট কন্ট্রিবিউশন কাউন্ট বাড়বে।
+                The admin team quickly checks the content. Once approved, your profile and name are published on the <strong>Wall of Contributors</strong> and your contribution count increases.
               </p>
               <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-2xl border border-emerald-200/50 dark:border-emerald-900/30">
-                🏷️ ডাউনলোডেড প্রতিটি পিডিএফে আপনার নামের স্থায়ী ওয়াটারমার্ক স্ট্যাম্প থাকবে!
+                🏷️ Your name will also be permanently watermarked on every downloaded PDF page as the contributor!
               </div>
             </div>
 
@@ -314,14 +307,14 @@ export const HowToUsePage: React.FC = () => {
           <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-orange-50 to-amber-50 dark:from-zinc-900 dark:to-zinc-850 border border-orange-200/80 dark:border-zinc-700/80 space-y-4">
             <div className="flex items-center space-x-2 text-base font-bold text-gray-900 dark:text-white">
               <AlertCircle className="w-5 h-5 text-[#FF6600]" />
-              <span>গুগল ড্রাইভ (Google Drive) লিংক শেয়ার করার সঠিক নিয়ম:</span>
+              <span>How to share your Google Drive link correctly:</span>
             </div>
             
             <ol className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 space-y-2 list-decimal list-inside leading-relaxed">
-              <li>আপনার গুগল ড্রাইভে নোটের PDF ফাইলে রাইট ক্লিক করে <strong>Share</strong> চাপুন।</li>
-              <li>নিচে <strong>General Access</strong> সেকশনে <em>Restricted</em> থাকলে সেটিতে ক্লিক করে <strong>"Anyone with the link"</strong> নির্বাচন করুন।</li>
-              <li>রোল হিসেবে <strong>Viewer</strong> রাখা নিশ্চিত করুন (যাতে কেউ ফাইল এডিট করতে না পারে)।</li>
-              <li><strong>Copy link</strong> বাটনে ক্লিক করে আমাদের সাবমিশন ফর্মে পেস্ট করে দিন।</li>
+              <li>In your Google Drive, right-click on the note's PDF file and select <strong>Share</strong>.</li>
+              <li>Under the <strong>General Access</strong> section, change <em>Restricted</em> to <strong>"Anyone with the link"</strong>.</li>
+              <li>Keep the role as <strong>Viewer</strong> (to protect your original file from being edited).</li>
+              <li>Click <strong>Copy link</strong> and paste it into our note submission form.</li>
             </ol>
           </div>
 
@@ -344,10 +337,10 @@ export const HowToUsePage: React.FC = () => {
         <section className="space-y-4 max-w-3xl mx-auto animate-in fade-in duration-300">
           <div className="text-center max-w-xl mx-auto pb-4 space-y-1">
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-              সাধারণ জিজ্ঞাসা ও উত্তর (FAQs)
+              Frequently Asked Questions (FAQs)
             </h2>
             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-              প্ল্যাটফর্ম সম্পর্কে শিক্ষার্থীদের সচরাচর জানতে চাওয়া প্রশ্নের উত্তর:
+              Clear answers to common questions about using and contributing to UIU Note Share:
             </p>
           </div>
 
@@ -396,7 +389,7 @@ export const HowToUsePage: React.FC = () => {
           </h2>
 
           <p className="text-sm sm:text-base text-orange-100 leading-relaxed">
-            একজনের শেয়ার করা একটি ছোট নোট বাঁচিয়ে দিতে পারে শত সহপাঠীর একটি সম্পূর্ণ কোর্স। আপনিও আপনার হাতের নোট বা প্রশ্ন শেয়ার করে আজই অবদান রাখুন।
+            A single note shared by you can save a classmate's entire semester. Join the student-led knowledge-sharing movement today.
           </p>
 
           <div className="flex flex-wrap items-center gap-3 pt-2">
