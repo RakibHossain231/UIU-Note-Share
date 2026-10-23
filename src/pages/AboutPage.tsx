@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { 
   BookOpen, 
   Heart, 
@@ -8,7 +8,6 @@ import {
   HardDrive, 
   ShieldCheck, 
   GraduationCap,
-  Code,
   Coffee,
   CheckCircle2,
   Share2
@@ -152,16 +151,7 @@ export const AboutPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Tech Stack Info */}
-      <section className="bg-gray-50 dark:bg-zinc-900/60 border border-gray-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 space-y-4">
-        <div className="flex items-center space-x-2 text-sm font-bold text-gray-900 dark:text-white">
-          <Code className="w-4 h-4 text-[#FF6600]" />
-          <span>Technology & Open Source Stack</span>
-        </div>
-        <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-          UIU Note Share is built using React 18, TypeScript, Tailwind CSS, JSZip bulk packaging, and Supabase Cloud Database with LocalStorage synchronization. Blazing fast client-side navigation with zero page reloads.
-        </p>
-      </section>
+
 
     </div>
   );
