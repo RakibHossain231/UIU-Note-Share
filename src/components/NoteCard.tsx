@@ -32,6 +32,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({ item, onPreview }) => {
       case 'question_final': return 'Final Questions & Solves';
       case 'ct': return `Class Test (CT-${item.ctNumber || '1'})`;
       case 'assignment': return `Assignment ${item.assignmentNumber || '1'}`;
+      case 'lab_report': return 'Lab Report';
       case 'cheatsheet': return 'Formula & Cheat Sheet';
       default: return 'Resource';
     }
@@ -46,6 +47,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({ item, onPreview }) => {
       case 'question_final': return 'bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-800';
       case 'ct': return 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
       case 'assignment': return 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800';
+      case 'lab_report': return 'bg-cyan-100 dark:bg-cyan-950/60 text-cyan-800 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800';
       case 'cheatsheet': return 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800';
       default: return 'bg-gray-100 dark:bg-zinc-800 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-zinc-700';
     }

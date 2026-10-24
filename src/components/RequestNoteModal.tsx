@@ -98,6 +98,7 @@ export const RequestNoteModal: React.FC<RequestNoteModalProps> = ({
                   <option value="question_final">Final Exam Question & Solve</option>
                   <option value="ct">Class Test (CT) Questions & Solves</option>
                   <option value="assignment">Assignment Solution & Code</option>
+                  <option value="lab_report">Lab Report & Manual</option>
                   <option value="cheatsheet">Formula / Cheat Sheet</option>
                 </select>
               </div>

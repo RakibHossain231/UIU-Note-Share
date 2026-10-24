@@ -25,6 +25,7 @@ type CategoryKey =
   | 'final'
   | 'ct'
   | 'assignment'
+  | 'lab_report'
   | 'cheatsheet';
 
 const CATEGORY_ORDER: CategoryKey[] = [
@@ -33,6 +34,7 @@ const CATEGORY_ORDER: CategoryKey[] = [
   'final',
   'ct',
   'assignment',
+  'lab_report',
   'cheatsheet'
 ];
 
@@ -138,8 +140,13 @@ export const CourseDetailPage: React.FC = () => {
       (r.assignmentNumber !== undefined && r.assignmentNumber !== null) ||
       (r.title && /\bassign/i.test(r.title))
     );
+    // 6. Lab Reports & Manuals
+    const labItems = courseResources.filter(r => 
+      r.type === 'lab_report' || 
+      (r.title && /lab|report/i.test(r.title))
+    );
 
-    // 6. Cheat Sheets (optional)
+    // 7. Cheat Sheets (optional)
     const cheatsheets = courseResources.filter(r => r.type === 'cheatsheet');
 
     return {
@@ -187,6 +194,15 @@ export const CourseDetailPage: React.FC = () => {
         questionCount: assignmentItems.filter(isQuestionItem).length,
         solutionCount: assignmentItems.filter(isSolutionItem).length,
         iconType: 'assignment' as const
+      },
+      lab_report: {
+        title: 'Lab Reports & Manuals',
+        badge: 'LAB',
+        count: labItems.length,
+        items: labItems,
+        questionCount: 0,
+        solutionCount: 0,
+        iconType: 'lab_report' as const
       },
       cheatsheet: {
         title: 'Formula & Cheat Sheets',
@@ -352,7 +368,7 @@ export const CourseDetailPage: React.FC = () => {
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-5">
             {visibleCategories.map((key) => {
               const cat = categoryData[key];
               return (
@@ -532,7 +548,7 @@ export const CourseDetailPage: React.FC = () => {
                 const isSol = isSolutionItem(item);
                 const codeBadge = item.trimesterCode 
                   ? item.trimesterCode 
-                  : (item.ctNumber ? `CT ${item.ctNumber}` : (item.assignmentNumber ? `Assign ${item.assignmentNumber}` : (item.type === 'handnote' ? 'NOTE' : 'PDF')));
+                  : (item.ctNumber ? `CT ${item.ctNumber}` : (item.assignmentNumber ? `Assign ${item.assignmentNumber}` : (item.type === 'handnote' ? 'NOTE' : (item.type === 'lab_report' ? 'LAB' : 'PDF'))));
                 const readableSemester = item.trimesterCode ? formatTrimesterCode(item.trimesterCode) : '';
                 const scope = detectNoteScope(item);
 
@@ -592,7 +608,11 @@ export const CourseDetailPage: React.FC = () => {
                           )}
 
                           {/* Question vs Solution Badge (for Mid, Final, CT, Assignment) */}
-                          {selectedCategory !== 'handnote' && (
+                          {selectedCategory === 'lab_report' ? (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-cyan-100 text-cyan-800 dark:bg-cyan-950/70 dark:text-cyan-300 border border-cyan-200/60 dark:border-cyan-800 shadow-sm flex items-center space-x-1">
+                              <span>🧪 LAB REPORT</span>
+                            </span>
+                          ) : selectedCategory !== 'handnote' && selectedCategory !== 'cheatsheet' && (
                             isSol ? (
                               <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800 shadow-sm flex items-center space-x-1">
                                 <span>💡 SOLVE</span>

@@ -6,6 +6,7 @@ export type ResourceType =
   | 'final'
   | 'ct'
   | 'assignment'
+  | 'lab_report'
   | 'cheatsheet'
   | 'question_mid'
   | 'mid_question'

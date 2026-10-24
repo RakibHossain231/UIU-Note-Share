@@ -9,6 +9,7 @@ interface CategoryScrollIconProps {
     | 'ct_solve' 
     | 'assignment' 
     | 'assignment_solve' 
+    | 'lab_report'
     | 'cheatsheet';
   color?: string;
   className?: string;
@@ -162,6 +163,29 @@ export const CategoryScrollIcon: React.FC<CategoryScrollIconProps> = ({
         <line x1="45" y1="52" x2="64" y2="52" stroke={color} strokeWidth="3" strokeLinecap="round" />
         <path d="M33 63L36 66L41 61" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
         <line x1="45" y1="64" x2="56" y2="64" stroke={color} strokeWidth="3" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (type === 'lab_report') {
+    return (
+      <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* Flask body */}
+        <path
+          d="M44 20V36L26 66C23 71 27 78 33 78H67C73 78 77 71 74 66L56 36V20"
+          stroke={color}
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {/* Flask rim */}
+        <line x1="40" y1="20" x2="60" y2="20" stroke={color} strokeWidth="4" strokeLinecap="round" />
+        {/* Liquid level */}
+        <path d="M33 58C38 55 45 61 50 58C55 55 62 61 67 58" stroke={color} strokeWidth="3" strokeLinecap="round" />
+        {/* Bubbles */}
+        <circle cx="43" cy="67" r="2.5" fill={color} />
+        <circle cx="56" cy="65" r="3" fill={color} />
+        <circle cx="50" cy="46" r="2" fill={color} />
       </svg>
     );
   }

@@ -454,6 +454,8 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
                     <option value="question_final">Final Exam Question / Solve</option>
                     <option value="ct">Class Test (CT) Question / Solve</option>
                     <option value="assignment">Assignment Solution / Project</option>
+                    <option value="lab_report">Lab Report / Lab Assignment</option>
+                    <option value="cheatsheet">Cheat Sheet / Formula</option>
                   </select>
                 </div>
               </div>

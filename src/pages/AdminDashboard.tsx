@@ -2491,6 +2491,7 @@ create policy "Allow delete from contributions" on storage.objects for delete us
                     <option value="final">📕 Final Questions & Solves</option>
                     <option value="ct">🎯 Class Test (CT)</option>
                     <option value="assignment">📋 Assignment</option>
+                    <option value="lab_report">🧪 Lab Report / Lab Manual</option>
                     <option value="cheatsheet">📌 Cheat Sheet / Formula</option>
                   </select>
                 </div>
@@ -2969,6 +2970,7 @@ create policy "Allow delete from contributions" on storage.objects for delete us
                     <option value="final">📕 Final Questions & Solves</option>
                     <option value="ct">🎯 Class Test (CT)</option>
                     <option value="assignment">📋 Assignment</option>
+                    <option value="lab_report">🧪 Lab Report / Lab Manual</option>
                     <option value="cheatsheet">📌 Cheat Sheet / Formula</option>
                   </select>
                 </div>
@@ -3158,6 +3160,8 @@ create policy "Allow delete from contributions" on storage.objects for delete us
                     <option value="question_final">Final Exam Question / Solve</option>
                     <option value="ct">Class Test (CT) Question / Solve</option>
                     <option value="assignment">Assignment Solution / Project</option>
+                    <option value="lab_report">Lab Report / Lab Manual</option>
+                    <option value="cheatsheet">Cheat Sheet / Formula</option>
                   </select>
                 </div>
               </div>
