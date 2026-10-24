@@ -68,6 +68,26 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | null>(null);
 
+const sanitizeResources = (resList: ResourceItem[]): ResourceItem[] => {
+  return resList.map(r => {
+    let modified = false;
+    const copy = { ...r };
+    if (copy.type !== 'assignment' && copy.assignmentNumber !== undefined) {
+      delete copy.assignmentNumber;
+      modified = true;
+    }
+    if (copy.type !== 'ct' && copy.ctNumber !== undefined) {
+      delete copy.ctNumber;
+      modified = true;
+    }
+    if ((copy.type === 'lab_report' || copy.type === 'handnote' || copy.type === 'cheatsheet') && copy.term) {
+      delete copy.term;
+      modified = true;
+    }
+    return modified ? copy : r;
+  });
+};
+
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [resources, setResources] = useState<ResourceItem[]>([]);
@@ -145,8 +165,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // 2. Sync Resources
       const cloudResources = await SupabaseService.getResources();
       if (cloudResources) {
-        setResources(cloudResources);
-        StorageService.saveResources(cloudResources);
+        const cleaned = sanitizeResources(cloudResources);
+        setResources(cleaned);
+        StorageService.saveResources(cleaned);
       }
 
       // 3. Sync Contributors
@@ -280,8 +301,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const handleUpdateResource = async (res: ResourceItem) => {
-    StorageService.updateResource(res);
-    const updatedResources = StorageService.getResources();
+    const cleanRes = { ...res };
+    if (cleanRes.type !== 'assignment') delete cleanRes.assignmentNumber;
+    if (cleanRes.type !== 'ct') delete cleanRes.ctNumber;
+    if (cleanRes.type === 'lab_report' || cleanRes.type === 'handnote' || cleanRes.type === 'cheatsheet') delete cleanRes.term;
+
+    StorageService.updateResource(cleanRes);
+    const updatedResources = sanitizeResources(StorageService.getResources());
     setResources(updatedResources);
 
     // Reconcile contributor counts for all contributors

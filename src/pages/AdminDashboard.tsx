@@ -2933,7 +2933,11 @@ create policy "Allow delete from contributions" on storage.objects for delete us
             <form onSubmit={(e) => {
               e.preventDefault();
               if (!editingResource.title || !editingResource.fileUrl) return;
-              updateResource(editingResource);
+              const cleanToSave = { ...editingResource };
+              if (cleanToSave.type !== 'assignment') delete (cleanToSave as any).assignmentNumber;
+              if (cleanToSave.type !== 'ct') delete (cleanToSave as any).ctNumber;
+              if (cleanToSave.type === 'lab_report' || cleanToSave.type === 'handnote' || cleanToSave.type === 'cheatsheet') delete (cleanToSave as any).term;
+              updateResource(cleanToSave);
               setEditingResource(null);
             }} className="space-y-4">
               
@@ -2962,7 +2966,14 @@ create policy "Allow delete from contributions" on storage.objects for delete us
                   <label className="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Resource Category *</label>
                   <select
                     value={editingResource.type}
-                    onChange={(e) => setEditingResource({ ...editingResource, type: e.target.value as ResourceType })}
+                    onChange={(e) => {
+                      const newType = e.target.value as ResourceType;
+                      const updated = { ...editingResource, type: newType };
+                      if (newType !== 'assignment') delete (updated as any).assignmentNumber;
+                      if (newType !== 'ct') delete (updated as any).ctNumber;
+                      if (newType === 'lab_report' || newType === 'handnote' || newType === 'cheatsheet') delete (updated as any).term;
+                      setEditingResource(updated);
+                    }}
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white"
                   >
                     <option value="handnote">📝 Handwritten Note</option>

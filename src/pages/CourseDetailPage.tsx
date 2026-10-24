@@ -58,6 +58,33 @@ export const isQuestionItem = (item: ResourceItem): boolean => {
   return !isSolutionItem(item);
 };
 
+export const getCategoryForItem = (r: ResourceItem): CategoryKey => {
+  // 1. Strict primary matching based on explicit type (Exclusive: a resource belongs to only 1 category)
+  if (r.type === 'lab_report') return 'lab_report';
+  if (r.type === 'cheatsheet') return 'cheatsheet';
+  if (r.type === 'handnote') return 'handnote';
+  if (r.type === 'ct' || r.type === 'ct_question' || r.type === 'ct_solve') return 'ct';
+  if (r.type === 'assignment' || r.type === 'assignment_question' || r.type === 'assignment_solve') return 'assignment';
+  if (r.type === 'mid' || r.type === 'question_mid' || r.type === 'mid_question' || r.type === 'mid_solve') return 'mid';
+  if (r.type === 'final' || r.type === 'question_final' || r.type === 'final_question' || r.type === 'final_solve') return 'final';
+
+  // 2. Fallbacks for legacy/untyped items
+  if (r.ctNumber !== undefined && r.ctNumber !== null) return 'ct';
+  if (r.assignmentNumber !== undefined && r.assignmentNumber !== null) return 'assignment';
+  if (r.term === 'mid') return 'mid';
+  if (r.term === 'final') return 'final';
+
+  const title = (r.title || '').toLowerCase();
+  if (/\blab\b|\breport\b/i.test(title)) return 'lab_report';
+  if (/\bct\b|\bclass test\b/i.test(title)) return 'ct';
+  if (/\bassign/i.test(title)) return 'assignment';
+  if (/\bmid\b/i.test(title)) return 'mid';
+  if (/\bfinal\b/i.test(title)) return 'final';
+  if (/cheat|formula/i.test(title)) return 'cheatsheet';
+
+  return 'handnote';
+};
+
 export const CourseDetailPage: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
   const { courses, resources, pinnedCourseIds, togglePinCourse } = useData();
@@ -102,52 +129,14 @@ export const CourseDetailPage: React.FC = () => {
 
   // Unified 5 Primary Categories (+ Cheat Sheets if available)
   const categoryData = useMemo(() => {
-    // 1. Handnotes
-    const handnotes = courseResources.filter(r => r.type === 'handnote');
-
-    // 2. Mid Questions & Solves (combined)
-    const midItems = courseResources.filter(r => 
-      r.type === 'question_mid' || 
-      r.type === 'mid_question' || 
-      r.type === 'mid_solve' ||
-      r.term === 'mid' ||
-      (r.title && /\bmid\b/i.test(r.title))
-    );
-
-    // 3. Final Questions & Solves (combined)
-    const finalItems = courseResources.filter(r => 
-      r.type === 'question_final' || 
-      r.type === 'final_question' || 
-      r.type === 'final_solve' ||
-      r.term === 'final' ||
-      (r.title && /\bfinal\b/i.test(r.title))
-    );
-
-    // 4. CT Questions & Solves (combined)
-    const ctItems = courseResources.filter(r => 
-      r.type === 'ct' || 
-      r.type === 'ct_question' || 
-      r.type === 'ct_solve' ||
-      (r.ctNumber !== undefined && r.ctNumber !== null) ||
-      (r.title && /\bct\b|\bclass test\b/i.test(r.title))
-    );
-
-    // 5. Assignments & Solves (combined)
-    const assignmentItems = courseResources.filter(r => 
-      r.type === 'assignment' || 
-      r.type === 'assignment_question' || 
-      r.type === 'assignment_solve' ||
-      (r.assignmentNumber !== undefined && r.assignmentNumber !== null) ||
-      (r.title && /\bassign/i.test(r.title))
-    );
-    // 6. Lab Reports & Manuals
-    const labItems = courseResources.filter(r => 
-      r.type === 'lab_report' || 
-      (r.title && /lab|report/i.test(r.title))
-    );
-
-    // 7. Cheat Sheets (optional)
-    const cheatsheets = courseResources.filter(r => r.type === 'cheatsheet');
+    // Categorize each item strictly and mutually exclusively
+    const handnotes = courseResources.filter(r => getCategoryForItem(r) === 'handnote');
+    const midItems = courseResources.filter(r => getCategoryForItem(r) === 'mid');
+    const finalItems = courseResources.filter(r => getCategoryForItem(r) === 'final');
+    const ctItems = courseResources.filter(r => getCategoryForItem(r) === 'ct');
+    const assignmentItems = courseResources.filter(r => getCategoryForItem(r) === 'assignment');
+    const labItems = courseResources.filter(r => getCategoryForItem(r) === 'lab_report');
+    const cheatsheets = courseResources.filter(r => getCategoryForItem(r) === 'cheatsheet');
 
     return {
       handnote: {
@@ -553,7 +542,7 @@ export const CourseDetailPage: React.FC = () => {
                 const isSol = isSolutionItem(item);
                 const codeBadge = item.trimesterCode 
                   ? item.trimesterCode 
-                  : (item.ctNumber ? `CT ${item.ctNumber}` : (item.assignmentNumber ? `Assign ${item.assignmentNumber}` : (item.type === 'handnote' ? 'NOTE' : (item.type === 'lab_report' ? 'LAB' : 'PDF'))));
+                  : (item.type === 'ct' && item.ctNumber ? `CT ${item.ctNumber}` : (item.type === 'assignment' && item.assignmentNumber ? `Assign ${item.assignmentNumber}` : (item.type === 'handnote' ? 'NOTE' : (item.type === 'lab_report' ? 'LAB' : 'PDF'))));
                 const readableSemester = item.trimesterCode ? formatTrimesterCode(item.trimesterCode) : '';
                 const scope = detectNoteScope(item);
 
@@ -573,14 +562,14 @@ export const CourseDetailPage: React.FC = () => {
 
                         <div className="flex items-center gap-1.5 flex-wrap justify-end">
                           {/* CT Number Badge */}
-                          {item.ctNumber && (
+                          {item.type === 'ct' && item.ctNumber && (
                             <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800 shadow-sm">
                               CT {item.ctNumber}
                             </span>
                           )}
                           
                           {/* Assignment Number Badge */}
-                          {item.assignmentNumber && (
+                          {item.type === 'assignment' && item.assignmentNumber && (
                             <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider bg-indigo-100 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800 shadow-sm">
                               ASSIGN {item.assignmentNumber}
                             </span>
