@@ -216,12 +216,9 @@ export const CourseDetailPage: React.FC = () => {
     };
   }, [courseResources]);
 
-  // Visible categories in Level 1 (5 primary ones + cheatsheets if present)
+  // Visible categories in Level 1 (only categories that have at least 1 resource: count > 0)
   const visibleCategories = useMemo(() => {
-    return CATEGORY_ORDER.filter(key => {
-      if (key === 'cheatsheet') return categoryData.cheatsheet.count > 0;
-      return true;
-    });
+    return CATEGORY_ORDER.filter(key => categoryData[key].count > 0);
   }, [categoryData]);
 
   // Selected category items with sub-filter and sorting
@@ -368,8 +365,15 @@ export const CourseDetailPage: React.FC = () => {
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-5">
-            {visibleCategories.map((key) => {
+          {visibleCategories.length === 0 ? (
+            <EmptyState
+              title="No resources uploaded yet"
+              description="No resources have been added to this course yet. Be the first hero to share handnotes, exam solves, lab reports, or CT questions!"
+              onRequestClick={() => setRequestModalOpen(true)}
+            />
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-5">
+              {visibleCategories.map((key) => {
               const cat = categoryData[key];
               return (
                 <button
@@ -403,7 +407,8 @@ export const CourseDetailPage: React.FC = () => {
                 </button>
               );
             })}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
