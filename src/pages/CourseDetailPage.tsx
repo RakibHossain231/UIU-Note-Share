@@ -453,80 +453,10 @@ export const CourseDetailPage: React.FC = () => {
 
               <button
                 onClick={() => setSubFilter('all')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  subFilter === 'all'
-                    ? 'bg-[#FF6600] text-white shadow-sm'
-                    : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 hover:border-orange-400'
-                }`}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#FF6600] text-white shadow-sm"
               >
                 All ({categoryData[selectedCategory].items.length})
               </button>
-
-              
-
-              {/* CT specific tabs: CT 1, 2, 3, 4 */}
-              {selectedCategory === 'ct' && (
-                <>
-                  {[1, 2, 3, 4].map(num => (
-                    <button
-                      key={`ct${num}`}
-                      onClick={() => setSubFilter(`ct${num}`)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                        subFilter === `ct${num}`
-                          ? 'bg-[#FF6600] text-white shadow-sm'
-                          : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 hover:border-orange-400'
-                      }`}
-                    >
-                      🎯 CT {num}
-                    </button>
-                  ))}
-                </>
-              )}
-
-              {/* Assignment specific tabs: Assign 1, 2, 3 */}
-              {selectedCategory === 'assignment' && (
-                <>
-                  {[1, 2, 3].map(num => (
-                    <button
-                      key={`a${num}`}
-                      onClick={() => setSubFilter(`a${num}`)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                        subFilter === `a${num}`
-                          ? 'bg-[#FF6600] text-white shadow-sm'
-                          : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 hover:border-orange-400'
-                      }`}
-                    >
-                      📋 Assign {num}
-                    </button>
-                  ))}
-                </>
-              )}
-
-              {/* Question and Solution tabs for Mid, Final, CT, Assignment */}
-              {(selectedCategory === 'mid' || selectedCategory === 'final' || selectedCategory === 'ct' || selectedCategory === 'assignment') && (
-                <>
-                  <button
-                    onClick={() => setSubFilter('question')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      subFilter === 'question'
-                        ? 'bg-[#FF6600] text-white shadow-sm'
-                        : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 hover:border-orange-400'
-                    }`}
-                  >
-                    ❓ Questions ({categoryData[selectedCategory].questionCount})
-                  </button>
-                  <button
-                    onClick={() => setSubFilter('solve')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      subFilter === 'solve'
-                        ? 'bg-[#FF6600] text-white shadow-sm'
-                        : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 hover:border-orange-400'
-                    }`}
-                  >
-                    💡 Solutions ({categoryData[selectedCategory].solutionCount})
-                  </button>
-                </>
-              )}
             </div>
           )}
 
