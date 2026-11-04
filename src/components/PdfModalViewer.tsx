@@ -255,17 +255,50 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
 
   // Helper to read / write per-tab settings
   const getSettingsFor = (id: string): TabSettings => {
-    return tabSettings[id] || { zoom: 100, rotation: 0, darkInvert: false };
+    return tabSettings[id] || { zoom: 145, rotation: 0, darkInvert: false };
   };
 
   const updateSettingFor = (id: string, partial: Partial<TabSettings>) => {
     setTabSettings(prev => ({
       ...prev,
       [id]: {
-        ...(prev[id] || { zoom: 100, rotation: 0, darkInvert: false }),
+        ...(prev[id] || { zoom: 145, rotation: 0, darkInvert: false }),
         ...partial
       }
     }));
+  };
+
+  // Fullscreen change listener
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const handleMinimize = async () => {
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen();
+      } catch (err) {
+        console.error(err);
+      }
+      setIsFullscreen(false);
+    }
+    onToggleMinimize?.(true);
+  };
+
+  const handleCloseViewer = async () => {
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen();
+      } catch (err) {
+        console.error(err);
+      }
+      setIsFullscreen(false);
+    }
+    onClose?.();
   };
 
   // Keyboard shortcut Esc
@@ -273,7 +306,7 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (!isMinimized) {
-          if (onClose) onClose();
+          handleCloseViewer();
         }
       }
     };
@@ -328,7 +361,7 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
   }
 
   // Active settings for focused document
-  const focusedSettings = focusedItem ? getSettingsFor(focusedItem.id) : { zoom: 100, rotation: 0, darkInvert: false };
+  const focusedSettings = focusedItem ? getSettingsFor(focusedItem.id) : { zoom: 145, rotation: 0, darkInvert: false };
 
   const handleDownload = async (itemToDownload: ResourceItem) => {
     if (isDownloading) return;
@@ -590,50 +623,7 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
               );
             })}
 
-            {/* Quick Add Note Button / Dropdown */}
-            {unopenResources.length > 0 && onOpenResource && (
-              <div className="relative">
-                <button
-                  onClick={() => setShowAddMenu(!showAddMenu)}
-                  className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-orange-500/10 hover:bg-orange-500/20 text-[#FF6600] border border-orange-500/30 transition-all shadow-sm"
-                  title="Open another note as a tab"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Add Note</span>
-                </button>
 
-                {showAddMenu && (
-                  <div 
-                    className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-[#222225] border border-gray-200 dark:border-zinc-700 rounded-xl shadow-2xl py-1 z-50 max-h-60 overflow-y-auto"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="px-3 py-1.5 border-b border-gray-100 dark:border-zinc-800 text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                      Open in New Tab
-                    </div>
-                    {unopenResources.map((res) => {
-                      const b = getItemBadge(res);
-                      return (
-                        <button
-                          key={res.id}
-                          onClick={() => {
-                            onOpenResource(res);
-                            setShowAddMenu(false);
-                          }}
-                          className="w-full text-left px-3 py-2 text-xs hover:bg-orange-50 dark:hover:bg-zinc-800/80 flex items-center space-x-2 transition-colors"
-                        >
-                          <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded ${b.color}`}>
-                            {b.label}
-                          </span>
-                          <span className="truncate text-gray-800 dark:text-gray-200 font-semibold">
-                            {res.title}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Tab count & mode indicator */}
@@ -762,11 +752,31 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
               {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             </button>
 
-            {/* Direct Download Button */}
+            {/* MINIMIZE BUTTON (Exit fullscreen if active) */}
+            <button
+              onClick={handleMinimize}
+              className="p-1.5 rounded-xl text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-zinc-800 transition-colors"
+              title="Minimize to Floating Bar"
+            >
+              <Minus className="w-4 h-4" />
+            </button>
+
+            {/* CLOSE BUTTON (Exit fullscreen if active) */}
+            <button
+              onClick={handleCloseViewer}
+              className="p-1.5 rounded-xl text-gray-500 hover:text-rose-500 hover:bg-gray-200 dark:hover:bg-zinc-800 transition-colors"
+              title="Close Viewer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="h-4 w-[1px] bg-gray-300 dark:bg-zinc-700 mx-0.5 sm:mx-1" />
+
+            {/* Direct Download Button (At the extreme right) */}
             <button
               onClick={() => focusedItem && handleDownload(focusedItem)}
               disabled={isDownloading}
-              className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-[#FF6600] text-white hover:bg-orange-600 transition-colors shadow-sm disabled:opacity-80"
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#FF6600] text-white hover:bg-orange-600 transition-colors shadow-sm disabled:opacity-80 shrink-0 cursor-pointer"
               title="Download with watermark"
             >
               {isDownloading ? (
@@ -780,26 +790,6 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
                   <span className="hidden md:inline">Download</span>
                 </>
               )}
-            </button>
-
-            <div className="h-4 w-[1px] bg-gray-300 dark:bg-zinc-700 mx-0.5 sm:mx-1" />
-
-            {/* MINIMIZE BUTTON (Solution 1) */}
-            <button
-              onClick={() => onToggleMinimize?.(true)}
-              className="p-1.5 rounded-xl text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-zinc-800 transition-colors"
-              title="Minimize to Floating Bar"
-            >
-              <Minus className="w-4 h-4" />
-            </button>
-
-            {/* CLOSE BUTTON */}
-            <button
-              onClick={() => onClose?.()}
-              className="p-1.5 rounded-xl text-gray-500 hover:text-rose-500 hover:bg-gray-200 dark:hover:bg-zinc-800 transition-colors"
-              title="Close Viewer"
-            >
-              <X className="w-5 h-5" />
             </button>
 
           </div>
@@ -824,15 +814,9 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
                 <p className="text-xs text-gray-400 max-w-xs mb-4">
                   Open another note (e.g. Solution or Question) to view and compare both side-by-side.
                 </p>
-                {unopenResources.length > 0 && onOpenResource && (
-                  <button
-                    onClick={() => setShowAddMenu(true)}
-                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#FF6600] text-white hover:bg-orange-600 transition-colors shadow"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Choose a Note to Compare</span>
-                  </button>
-                )}
+                <p className="text-[11px] text-gray-500">
+                  Tip: Minimize the viewer (—) and click any other note on the course page to open it here!
+                </p>
               </div>
             )
           )}
