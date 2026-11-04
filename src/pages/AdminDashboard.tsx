@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
-  ShieldCheck, 
+  ShieldCheck,
+  Loader2, 
   Lock, 
   PlusCircle, 
   Trash2, 
@@ -67,6 +68,7 @@ export const AdminDashboard: React.FC = () => {
     loginAdmin, 
     loginStep1, 
     loginStep2, 
+    resendOtp, 
     updateAdminSecurity, 
     getLockStatus, 
     logoutAdmin, 
@@ -122,6 +124,8 @@ export const AdminDashboard: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loginFeedback, setLoginFeedback] = useState<{ type: 'error' | 'success' | 'warning'; msg: string } | null>(null);
   const [lockSeconds, setLockSeconds] = useState<number>(0);
+  const [isSendingOtp, setIsSendingOtp] = useState<boolean>(false);
+  const [otpTimer, setOtpTimer] = useState<number>(120);
 
   // Security Credentials management state in Settings tab
   const [editAdminEmail, setEditAdminEmail] = useState<string>(adminEmail);
@@ -316,31 +320,85 @@ export const AdminDashboard: React.FC = () => {
     return () => clearInterval(timer);
   }, [lockSeconds]);
 
-  // Handle Step 1 Login (Email + Password)
-  const handleStep1Submit = (e: React.FormEvent) => {
+  // Email OTP countdown timer (2 minutes)
+  useEffect(() => {
+    if (loginStep === 2 && otpTimer > 0) {
+      const timer = setInterval(() => {
+        setOtpTimer((prev) => Math.max(0, prev - 1));
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [loginStep, otpTimer]);
+
+  // Handle Step 1 Login (Email + Password -> sends real Email OTP)
+  const handleStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginFeedback(null);
-    const res = loginStep1(emailInput, passwordInput);
-    if (res.isLocked) {
-      setLockSeconds(res.remainingSeconds || 900);
+    setIsSendingOtp(true);
+    try {
+      const res = await loginStep1(emailInput, passwordInput);
+      if (res.isLocked) {
+        setLockSeconds(res.remainingSeconds || 900);
+        setLoginFeedback({
+          type: 'error',
+          msg: res.message || 'Account is locked for 15 minutes due to too many failed attempts.'
+        });
+        return;
+      }
+      if (!res.success) {
+        setLoginFeedback({
+          type: 'error',
+          msg: res.message || 'Invalid administrator email or password.'
+        });
+        return;
+      }
+      setLoginStep(2);
+      setPinInput('');
+      setOtpTimer(120);
+      setLoginFeedback({
+        type: 'success',
+        msg: res.message || `A 6-digit OTP code has been sent to ${emailInput}.`
+      });
+    } catch (err: any) {
       setLoginFeedback({
         type: 'error',
-        msg: res.message || 'Account is locked for 15 minutes due to too many failed attempts.'
+        msg: err?.message || 'Failed to send OTP. Please check your network and try again.'
       });
-      return;
+    } finally {
+      setIsSendingOtp(false);
     }
-    if (!res.success) {
-      setLoginFeedback({
-        type: 'error',
-        msg: res.message || 'Invalid administrator email or password.'
-      });
-      return;
-    }
-    setLoginStep(2);
-    setPinInput('');
   };
 
-  // Handle Step 2 Login (6-Digit Security PIN)
+  // Handle Resend OTP
+  const handleResendOtp = async () => {
+    if (otpTimer > 0 || isSendingOtp) return;
+    setIsSendingOtp(true);
+    setLoginFeedback(null);
+    try {
+      const res = await resendOtp(emailInput);
+      if (res.success) {
+        setOtpTimer(120);
+        setLoginFeedback({
+          type: 'success',
+          msg: res.message || `A fresh 6-digit OTP has been sent to ${emailInput}.`
+        });
+      } else {
+        setLoginFeedback({
+          type: 'error',
+          msg: res.message || 'Failed to resend OTP. Please try again later.'
+        });
+      }
+    } catch (err: any) {
+      setLoginFeedback({
+        type: 'error',
+        msg: err?.message || 'Error resending OTP.'
+      });
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  // Handle Step 2 Login (6-Digit Email OTP verification)
   const handleStep2Submit = (e: React.FormEvent) => {
     e.preventDefault();
     setLoginFeedback(null);
@@ -348,7 +406,7 @@ export const AdminDashboard: React.FC = () => {
     if (!res.success) {
       setLoginFeedback({
         type: 'error',
-        msg: res.message || 'Incorrect security PIN. Please try again.'
+        msg: res.message || 'Incorrect 6-digit OTP code. Please try again.'
       });
       return;
     }
@@ -807,10 +865,20 @@ create policy "Allow delete from contributions" on storage.objects for delete us
 
               <button
                 type="submit"
-                className="w-full py-3 rounded-xl bg-[#FF6600] hover:bg-orange-600 text-white font-bold text-sm transition-all shadow-md shadow-orange-500/25 flex items-center justify-center space-x-2"
+                disabled={isSendingOtp || lockSeconds > 0}
+                className="w-full py-3 rounded-xl bg-[#FF6600] hover:bg-orange-600 disabled:opacity-50 text-white font-bold text-sm transition-all shadow-md shadow-orange-500/25 flex items-center justify-center space-x-2"
               >
-                <span>Continue to 2FA Verification</span>
-                <span>→</span>
+                {isSendingOtp ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Sending OTP to Email...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Continue & Send Email OTP</span>
+                    <span>&rarr;</span>
+                  </>
+                )}
               </button>
             </form>
 
@@ -824,39 +892,40 @@ create policy "Allow delete from contributions" on storage.objects for delete us
       );
     }
 
-    // Case 2: Step 2 of 2 (6-Digit Security PIN / 2FA)
+    // Case 2: Step 2 of 2 (6-Digit Email OTP Verification)
     return (
       <div className="min-h-[75vh] flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-3xl p-8 shadow-2xl space-y-6">
           <div className="text-center">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 flex items-center justify-center mx-auto mb-4 shadow-inner">
-              <KeyRound className="w-7 h-7" />
+            <div className="w-14 h-14 rounded-2xl bg-orange-100 text-[#FF6600] dark:bg-orange-950/60 flex items-center justify-center mx-auto mb-4 shadow-inner">
+              <Mail className="w-7 h-7" />
             </div>
-            <div className="inline-flex items-center space-x-1 px-3 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 uppercase tracking-wider mb-2">
-              Step 2 of 2 • 2FA Verification
+            <div className="inline-flex items-center space-x-1 px-3 py-0.5 rounded-full text-[10px] font-extrabold bg-orange-100 dark:bg-orange-950/50 text-[#FF6600] uppercase tracking-wider mb-2">
+              Step 2 of 2 • Email OTP Verification
             </div>
             <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white">
-              Two-Factor Authentication
+              Verify Security Code
             </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Enter your registered 6-digit Security PIN to verify identity for <strong className="text-gray-800 dark:text-gray-200">{emailInput}</strong>.
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+              We have sent a 6-digit verification code to <br/>
+              <strong className="text-gray-900 dark:text-gray-200 font-semibold">{emailInput}</strong>
             </p>
           </div>
 
           <form onSubmit={handleStep2Submit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5 text-center">
-                6-Digit Security PIN *
+                Enter 6-Digit Email OTP Code *
               </label>
               <input
-                type="password"
+                type="text"
                 maxLength={6}
                 autoFocus
                 required
                 placeholder="• • • • • •"
                 value={pinInput}
                 onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
-                className="w-full text-center tracking-[0.6em] font-mono text-2xl py-3 rounded-xl bg-gray-50 dark:bg-zinc-800/90 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                className="w-full text-center tracking-[0.5em] font-mono text-2xl py-3 rounded-xl bg-gray-50 dark:bg-zinc-800/90 border border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-white focus:outline-none focus:border-[#FF6600] transition-colors"
               />
             </div>
 
@@ -873,33 +942,51 @@ create policy "Allow delete from contributions" on storage.objects for delete us
 
             <button
               type="submit"
-              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-all shadow-md shadow-emerald-500/25 flex items-center justify-center space-x-2"
+              disabled={pinInput.length !== 6}
+              className="w-full py-3 rounded-xl bg-[#FF6600] hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-all shadow-md shadow-orange-500/25 flex items-center justify-center space-x-2"
             >
               <ShieldCheck className="w-4 h-4" />
-              <span>Unlock Admin Dashboard</span>
+              <span>Verify & Unlock Dashboard</span>
             </button>
+
+            {/* Resend Code Section */}
+            <div className="flex items-center justify-center pt-2">
+              {otpTimer > 0 ? (
+                <div className="flex items-center space-x-1.5 text-xs text-gray-500 dark:text-gray-400">
+                  <Clock className="w-3.5 h-3.5 text-gray-400" />
+                  <span>Resend code in</span>
+                  <span className="font-mono font-bold text-[#FF6600]">
+                    {Math.floor(otpTimer / 60)}:{String(otpTimer % 60).padStart(2, '0')}
+                  </span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={isSendingOtp}
+                  className="flex items-center space-x-1.5 text-xs font-semibold text-[#FF6600] hover:text-orange-500 transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSendingOtp ? 'animate-spin' : ''}`} />
+                  <span>{isSendingOtp ? 'Resending Code...' : 'Resend OTP Code'}</span>
+                </button>
+              )}
+            </div>
 
             <button
               type="button"
               onClick={() => {
                 setLoginStep(1);
                 setLoginFeedback(null);
+                setPinInput('');
               }}
-              className="w-full py-2 text-xs font-semibold text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 flex items-center justify-center space-x-1"
+              className="w-full py-2 text-xs font-semibold text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 flex items-center justify-center space-x-1 transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back to Step 1 (Change Email/Password)</span>
             </button>
           </form>
-
-          <div className="pt-3 border-t border-gray-100 dark:border-zinc-800 text-center">
-            <span className="text-[11px] text-gray-400">
-              Default 2FA PIN: <code className="bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-emerald-500">564566</code>
-            </span>
-          </div>
         </div>
-      </div>
-    );
+      </div>    );
   }
 
   // ------------------------------------------------------------------

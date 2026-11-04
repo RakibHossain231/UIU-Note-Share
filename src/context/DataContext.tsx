@@ -1,3 +1,4 @@
+import { EmailOtpService } from '../services/emailOtpService';
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Course, ResourceItem, Contributor, NoteRequest, Department, AdminCredentials, PendingContribution, ResourceType } from '../types';
 import { StorageService, CreatorProfileData } from '../services/storageService';
@@ -37,17 +38,21 @@ interface DataContextType {
   isAdmin: boolean;
   adminEmail: string;
   loginAdmin: (password: string) => boolean;
-  loginStep1: (email: string, password: string) => { 
+  loginStep1: (email: string, password: string) => Promise<{ 
     success: boolean; 
     message?: string; 
     isLocked?: boolean; 
     remainingSeconds?: number;
     attemptsLeft?: number;
-  };
+  }>;
   loginStep2: (pin: string) => { 
     success: boolean; 
     message?: string; 
   };
+  resendOtp: (email: string) => Promise<{
+    success: boolean;
+    message?: string;
+  }>;
   updateAdminSecurity: (newEmail: string, oldPass: string, newPass: string, newPin: string) => { 
     success: boolean; 
     message: string; 
@@ -581,7 +586,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [adminEmail, setAdminEmail] = useState<string>(() => StorageService.getAdminCredentials().email);
 
-  const loginStep1 = (email: string, password: string) => {
+  const loginStep1 = async (email: string, password: string) => {
     const lock = StorageService.isBruteForceLocked();
     if (lock.locked) {
       return {
@@ -598,9 +603,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const passMatches = creds.password === password || password === '564566' || password === 'uiuadmin123';
 
     if (emailMatches && passMatches) {
+      // Send real OTP to registered email
+      const sendRes = await EmailOtpService.sendOtp(email.trim());
+      if (!sendRes.success) {
+        return {
+          success: false,
+          message: sendRes.message
+        };
+      }
       return {
         success: true,
-        message: 'Step 1 verified! Please enter your 6-digit security code.'
+        message: `A 6-digit OTP has been sent to ${email.trim()}. Please enter it below to verify.`
       };
     }
 
@@ -623,7 +636,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   };
 
-  const loginStep2 = (pin: string) => {
+  const loginStep2 = (otp: string) => {
     const lock = StorageService.isBruteForceLocked();
     if (lock.locked) {
       return {
@@ -632,14 +645,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
     }
 
-    const creds = StorageService.getAdminCredentials();
-    const cleanPin = pin.replace(/\s+/g, '');
-    const pinMatches = creds.securityPin === cleanPin || cleanPin === '564566' || cleanPin === '786221';
+    // Strictly verify OTP sent to email (No hardcoded/bypass code!)
+    const verifyRes = EmailOtpService.verifyOtp(otp);
 
-    if (pinMatches) {
+    if (verifyRes.success) {
       StorageService.resetFailedAttempts();
       StorageService.setAdminLoggedIn(true);
       setIsAdmin(true);
+      const creds = StorageService.getAdminCredentials();
       setAdminEmail(creds.email);
       return { success: true };
     }
@@ -649,8 +662,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       success: false,
       message: attempt.isLocked 
         ? 'Account locked for 15 minutes due to consecutive failed attempts.' 
-        : `Incorrect 6-digit security code. ${Math.max(0, 5 - attempt.failedAttempts)} attempts remaining.`
+        : `${verifyRes.message || 'Incorrect 6-digit OTP code.'} ${Math.max(0, 5 - attempt.failedAttempts)} attempts remaining.`
     };
+  };
+
+  const resendOtp = async (email: string) => {
+    return await EmailOtpService.sendOtp(email.trim());
   };
 
   const updateAdminSecurity = (newEmail: string, oldPass: string, newPass: string, newPin: string) => {
@@ -752,6 +769,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loginAdmin,
         loginStep1,
         loginStep2,
+    resendOtp,
         updateAdminSecurity,
         getLockStatus,
         logoutAdmin,
