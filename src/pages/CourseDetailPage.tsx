@@ -94,8 +94,39 @@ export const CourseDetailPage: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [subFilter, setSubFilter] = useState<string>('all');
 
-  // Modals state
-  const [previewItem, setPreviewItem] = useState<ResourceItem | null>(null);
+  // Modals state (Multi-tab, Split View & Minimize support)
+  const [previewTabs, setPreviewTabs] = useState<ResourceItem[]>([]);
+  const [activeTabId, setActiveTabId] = useState<string | null>(null);
+  const [isViewerMinimized, setIsViewerMinimized] = useState<boolean>(false);
+
+  const handleOpenPreview = (item: ResourceItem) => {
+    setPreviewTabs(prev => {
+      if (prev.some(t => t.id === item.id)) return prev;
+      return [...prev, item];
+    });
+    setActiveTabId(item.id);
+    setIsViewerMinimized(false);
+  };
+
+  const handleCloseTab = (id: string) => {
+    setPreviewTabs(prev => {
+      const next = prev.filter(t => t.id !== id);
+      if (activeTabId === id) {
+        const nextActive = next.length > 0 ? next[next.length - 1].id : null;
+        setActiveTabId(nextActive);
+        if (!nextActive) {
+          setIsViewerMinimized(false);
+        }
+      }
+      return next;
+    });
+  };
+
+  const handleCloseAllPreview = () => {
+    setPreviewTabs([]);
+    setActiveTabId(null);
+    setIsViewerMinimized(false);
+  };
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
@@ -479,7 +510,7 @@ export const CourseDetailPage: React.FC = () => {
                 return (
                   <div
                     key={item.id}
-                    onClick={() => setPreviewItem(item)}
+                    onClick={() => handleOpenPreview(item)}
                     style={{ borderBottom: `4px solid ${cardColor}` }}
                     className="group relative flex flex-col justify-between text-left bg-white dark:bg-[#1E1E1E] border border-gray-200/80 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-1 cursor-pointer"
                   >
@@ -602,10 +633,17 @@ export const CourseDetailPage: React.FC = () => {
         </div>
       )}
 
-      {/* PDF Modal Viewer */}
+      {/* PDF Modal Viewer (Multi-Tab, Split View, Minimize) */}
       <PdfModalViewer
-        item={previewItem}
-        onClose={() => setPreviewItem(null)}
+        items={previewTabs}
+        activeItemId={activeTabId}
+        onSelectTab={(id) => setActiveTabId(id)}
+        onCloseTab={handleCloseTab}
+        onClose={handleCloseAllPreview}
+        isMinimized={isViewerMinimized}
+        onToggleMinimize={(min) => setIsViewerMinimized(min)}
+        availableResources={courseResources}
+        onOpenResource={handleOpenPreview}
       />
 
       {/* Bulk Download Progress Modal */}
