@@ -410,21 +410,43 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
               </span>
             </div>
 
-            {/* Right Pane Tab Switcher if multiple tabs open */}
-            {paneType === 'right' && currentItems.length > 2 && (
-              <select
-                value={secondTabId || ''}
-                onChange={(e) => setSecondTabId(e.target.value)}
-                onClick={(e) => e.stopPropagation()}
-                className="text-[11px] bg-zinc-800 text-zinc-200 border border-zinc-700 rounded-lg px-2 py-0.5 focus:outline-none focus:border-[#FF6600]"
-              >
-                {currentItems.filter(t => t.id !== activeItem.id).map(t => (
-                  <option key={t.id} value={t.id}>
-                    {t.title}
-                  </option>
-                ))}
-              </select>
-            )}
+            {/* Right Pane Actions: Document Switcher & Swap Panes */}
+            <div className="flex items-center space-x-2">
+              {paneType === 'right' && currentItems.length > 1 && (
+                <div className="flex items-center space-x-1.5" onClick={(e) => e.stopPropagation()}>
+                  <span className="text-[10px] text-gray-400 hidden sm:inline">Compare with:</span>
+                  <select
+                    value={secondTabId || ''}
+                    onChange={(e) => setSecondTabId(e.target.value)}
+                    className="text-xs font-semibold bg-zinc-800 text-orange-400 border border-zinc-700 hover:border-[#FF6600] rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer"
+                  >
+                    {currentItems.filter(t => t.id !== activeItem.id).map(t => (
+                      <option key={t.id} value={t.id}>
+                        {t.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Swap Panes Button */}
+              {isSplitView && currentItems.length > 1 && paneType === 'right' && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (secondItem) {
+                      const temp = activeItem.id;
+                      onSelectTab?.(secondItem.id);
+                      setSecondTabId(temp);
+                    }
+                  }}
+                  className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-zinc-800 hover:bg-zinc-700 text-gray-300 hover:text-white border border-zinc-700 transition-colors flex items-center space-x-1"
+                  title="Swap Left and Right Panes"
+                >
+                  <span>⇄ Swap</span>
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -518,19 +540,38 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
               return (
                 <div
                   key={tab.id}
-                  onClick={() => onSelectTab?.(tab.id)}
+                  onClick={() => {
+                    if (isSplitView && focusedPane === 'right') {
+                      setSecondTabId(tab.id);
+                    } else {
+                      onSelectTab?.(tab.id);
+                    }
+                  }}
                   className={`group relative flex items-center space-x-2 px-3 py-1.5 text-xs font-bold rounded-t-xl transition-all cursor-pointer border-t-2 select-none ${
-                    isActive
+                    (isActive && (!isSplitView || focusedPane === 'left')) || (isSplitView && secondItem?.id === tab.id && focusedPane === 'right')
                       ? 'border-[#FF6600] bg-white dark:bg-[#1A1A1C] text-gray-900 dark:text-white shadow-sm'
+                      : (isSplitView && (tab.id === activeItem.id || tab.id === secondItem?.id))
+                      ? 'border-orange-400/50 bg-gray-100 dark:bg-zinc-800 text-gray-800 dark:text-zinc-200'
                       : 'border-transparent bg-gray-200/70 dark:bg-zinc-900/60 text-gray-600 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-zinc-200'
                   }`}
                 >
                   <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded ${badge.color}`}>
                     {badge.label}
                   </span>
-                  <span className="truncate max-w-[140px] sm:max-w-[190px]">
+                  <span className="truncate max-w-[130px] sm:max-w-[180px]">
                     {tab.title}
                   </span>
+                  {isSplitView && (
+                    tab.id === activeItem.id ? (
+                      <span className="text-[8px] px-1 py-0.2 rounded bg-orange-500/20 text-orange-400 font-extrabold border border-orange-500/30">
+                        LEFT
+                      </span>
+                    ) : tab.id === secondItem?.id ? (
+                      <span className="text-[8px] px-1 py-0.2 rounded bg-cyan-500/20 text-cyan-400 font-extrabold border border-cyan-500/30">
+                        RIGHT
+                      </span>
+                    ) : null
+                  )}
                   
                   {/* Close Tab Button */}
                   {currentItems.length > 1 && (
@@ -554,11 +595,11 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
               <div className="relative">
                 <button
                   onClick={() => setShowAddMenu(!showAddMenu)}
-                  className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-gray-600 dark:text-zinc-400 hover:text-[#FF6600] hover:bg-gray-200 dark:hover:bg-zinc-800 transition-colors"
-                  title="Add another note from this course"
+                  className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-orange-500/10 hover:bg-orange-500/20 text-[#FF6600] border border-orange-500/30 transition-all shadow-sm"
+                  title="Open another note as a tab"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Add Note</span>
+                  <span>Add Note</span>
                 </button>
 
                 {showAddMenu && (
