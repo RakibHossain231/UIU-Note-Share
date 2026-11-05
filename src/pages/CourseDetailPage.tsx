@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
   Bookmark, 
@@ -87,25 +87,41 @@ export const getCategoryForItem = (r: ResourceItem): CategoryKey => {
 
 export const CourseDetailPage: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
+  const navigate = useNavigate();
   const { courses, resources, pinnedCourseIds, togglePinCourse } = useData();
 
   // Selected Category (null = Level 1 Category Hub, string = Level 2 Trimester Grid)
-  const [selectedCategory, setSelectedCategory] = useState<CategoryKey | null>(null);
-  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
-  const [subFilter, setSubFilter] = useState<string>('all');
+  // The view is remembered per course for this browser session, so coming back from a note page
+  // returns to the same category/filter instead of the hub.
+  const viewKey = `uiu_course_view_${courseId}`;
+  const savedView = (() => {
+    try {
+      return JSON.parse(sessionStorage.getItem(viewKey) || 'null') as
+        { selectedCategory: CategoryKey | null; sortOrder: 'newest' | 'oldest'; subFilter: string } | null;
+    } catch {
+      return null;
+    }
+  })();
+  const [selectedCategory, setSelectedCategory] = useState<CategoryKey | null>(savedView?.selectedCategory ?? null);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>(savedView?.sortOrder ?? 'newest');
+  const [subFilter, setSubFilter] = useState<string>(savedView?.subFilter ?? 'all');
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(viewKey, JSON.stringify({ selectedCategory, sortOrder, subFilter }));
+    } catch {
+      /* storage unavailable - ignore */
+    }
+  }, [viewKey, selectedCategory, sortOrder, subFilter]);
 
   // Modals state (Multi-tab, Split View & Minimize support)
   const [previewTabs, setPreviewTabs] = useState<ResourceItem[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [isViewerMinimized, setIsViewerMinimized] = useState<boolean>(false);
 
+  // Notes open on their own page in the same tab (route: /note/:resourceId)
   const handleOpenPreview = (item: ResourceItem) => {
-    setPreviewTabs(prev => {
-      if (prev.some(t => t.id === item.id)) return prev;
-      return [...prev, item];
-    });
-    setActiveTabId(item.id);
-    setIsViewerMinimized(false);
+    navigate(`/note/${encodeURIComponent(item.id)}`);
   };
 
   const handleCloseTab = (id: string) => {

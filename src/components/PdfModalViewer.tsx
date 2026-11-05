@@ -18,11 +18,11 @@ import {
   Plus,
   ChevronDown,
   ChevronUp,
-  SquareSplitHorizontal,
   Layers,
   FileText
 } from 'lucide-react';
 import { ResourceItem } from '../types';
+import { useTheme } from '../context/ThemeContext';
 import { downloadResourceWithWatermark, triggerDirectDownload } from '../services/pdfWatermarkService';
 
 export interface PdfModalViewerProps {
@@ -36,6 +36,7 @@ export interface PdfModalViewerProps {
   onToggleMinimize?: (minimized: boolean) => void;
   availableResources?: ResourceItem[];
   onOpenResource?: (item: ResourceItem) => void;
+  asPage?: boolean; // render as a full standalone page instead of a modal overlay
 }
 
 const getFileType = (url: string, title?: string): 'image' | 'doc' | 'pdf' => {
@@ -194,7 +195,8 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
   isMinimized = false,
   onToggleMinimize,
   availableResources = [],
-  onOpenResource
+  onOpenResource,
+  asPage = false
 }) => {
   // Normalize items list (supports both items prop and single item legacy prop)
   const currentItems = useMemo(() => {
@@ -213,11 +215,13 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
     return currentItems[0];
   }, [currentItems, activeItemId]);
 
-  // Per-Tab Settings: Zoom, Rotation, and Dark Invert are remembered per tab!
+  const { isDark, toggleTheme } = useTheme();
+
+  // Per-Tab Settings: Zoom and Rotation are remembered per tab!
   const [tabSettings, setTabSettings] = useState<Record<string, TabSettings>>({});
 
   // Split View state
-  const [isSplitView, setIsSplitView] = useState<boolean>(false);
+  const isSplitView = false; // split view has been removed
   const [focusedPane, setFocusedPane] = useState<'left' | 'right'>('left');
   const [secondTabId, setSecondTabId] = useState<string | null>(null);
 
@@ -304,7 +308,7 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
   // Keyboard shortcut Esc
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && !asPage) {
         if (!isMinimized) {
           handleCloseViewer();
         }
@@ -312,7 +316,7 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, isMinimized]);
+  }, [onClose, isMinimized, asPage]);
 
   if (currentItems.length === 0 || !activeItem) {
     return null;
@@ -499,7 +503,7 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
             <div 
               className="w-full h-full flex items-center justify-center overflow-auto"
               style={{
-                filter: settings.darkInvert ? 'invert(90%) hue-rotate(180deg)' : 'none',
+                filter: 'none', // document colors are never altered
               }}
             >
               <img
@@ -519,7 +523,7 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
             <div 
               className="relative w-full h-full transition-all duration-200 flex items-center justify-center overflow-hidden"
               style={{
-                filter: settings.darkInvert ? 'invert(90%) hue-rotate(180deg)' : 'none',
+                filter: 'none', // document colors are never altered
                 transform: `scale(${settings.zoom / 100}) rotate(${settings.rotation}deg)`,
                 transformOrigin: 'center center'
               }}
@@ -557,13 +561,16 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
+    <div className={asPage ? "fixed inset-0 z-50 bg-white dark:bg-[#1A1A1C] flex" : "fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4"}>
       <div 
         id="pdf-viewer-container"
-        className="relative w-full max-w-6xl h-[94vh] bg-white dark:bg-[#1A1A1C] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200 dark:border-zinc-800"
+        className={asPage
+          ? "relative w-full h-full bg-white dark:bg-[#1A1A1C] flex flex-col overflow-hidden"
+          : "relative w-full max-w-6xl h-[94vh] bg-white dark:bg-[#1A1A1C] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200 dark:border-zinc-800"}
       >
         
-        {/* 1. TOP TAB BAR (Multi-Tab Support) */}
+        {/* 1. TOP TAB BAR (Multi-Tab Support) - hidden on the standalone note page */}
+        {!asPage && (
         <div className="bg-gray-100 dark:bg-[#121214] border-b border-gray-200 dark:border-zinc-800 px-3 pt-2 flex items-center justify-between gap-2 overflow-x-auto">
           <div className="flex items-center space-x-1.5 overflow-x-auto py-0.5">
             {currentItems.map((tab) => {
@@ -634,6 +641,8 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
           </div>
         </div>
 
+        )}
+
         {/* 2. CONTROLS TOOLBAR */}
         <div className="flex flex-wrap items-center justify-between px-3 sm:px-4 py-2 border-b border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-[#18181A] gap-2">
           
@@ -654,37 +663,14 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
           {/* Action Controls */}
           <div className="flex items-center space-x-1 sm:space-x-1.5">
             
-            {/* SPLIT VIEW TOGGLE */}
+            {/* Theme toggle: switches the interface light/dark only - the document keeps its original colors */}
             <button
-              onClick={() => setIsSplitView(!isSplitView)}
-              className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
-                isSplitView
-                  ? 'bg-[#FF6600] text-white shadow-orange-500/20'
-                  : 'bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 hover:border-[#FF6600]'
-              }`}
-              title="Compare two notes side by side"
+              onClick={toggleTheme}
+              className="p-1.5 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-zinc-800 transition-colors"
+              title={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+              aria-label="Toggle theme"
             >
-              <SquareSplitHorizontal className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{isSplitView ? 'Split View ON' : 'Split View'}</span>
-            </button>
-
-            <div className="h-4 w-[1px] bg-gray-300 dark:bg-zinc-700 mx-0.5 sm:mx-1" />
-
-            {/* Night Reading Filter (Per-Tab) */}
-            <button
-              onClick={() => {
-                if (focusedItem) {
-                  updateSettingFor(focusedItem.id, { darkInvert: !focusedSettings.darkInvert });
-                }
-              }}
-              className={`p-1.5 rounded-xl text-xs font-medium transition-colors ${
-                focusedSettings.darkInvert 
-                  ? 'bg-amber-500 text-white' 
-                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-zinc-800'
-              }`}
-              title="Night Reading Filter (Invert)"
-            >
-              {focusedSettings.darkInvert ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
 
             {/* Rotate Clockwise (Per-Tab) */}
@@ -753,26 +739,19 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
             </button>
 
             {/* MINIMIZE BUTTON (Exit fullscreen if active) */}
-            <button
-              onClick={handleMinimize}
-              className="p-1.5 rounded-xl text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-zinc-800 transition-colors"
-              title="Minimize to Floating Bar"
-            >
-              <Minus className="w-4 h-4" />
-            </button>
-
-            {/* CLOSE BUTTON (Exit fullscreen if active) */}
-            <button
-              onClick={handleCloseViewer}
-              className="p-1.5 rounded-xl text-gray-500 hover:text-rose-500 hover:bg-gray-200 dark:hover:bg-zinc-800 transition-colors"
-              title="Close Viewer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            {!asPage && (
+              <button
+                onClick={handleMinimize}
+                className="p-1.5 rounded-xl text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-zinc-800 transition-colors"
+                title="Minimize to Floating Bar"
+              >
+                <Minus className="w-4 h-4" />
+              </button>
+            )}
 
             <div className="h-4 w-[1px] bg-gray-300 dark:bg-zinc-700 mx-0.5 sm:mx-1" />
 
-            {/* Direct Download Button (At the extreme right) */}
+            {/* Direct Download Button (before Close) */}
             <button
               onClick={() => focusedItem && handleDownload(focusedItem)}
               disabled={isDownloading}
@@ -792,6 +771,15 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
               )}
             </button>
 
+            {/* CLOSE BUTTON (Exit fullscreen if active) */}
+            <button
+              onClick={handleCloseViewer}
+              className="p-1.5 rounded-xl text-gray-500 hover:text-rose-500 hover:bg-gray-200 dark:hover:bg-zinc-800 transition-colors"
+              title="Close Viewer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
           </div>
         </div>
 
@@ -800,26 +788,6 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
           
           {/* PRIMARY PANE (Left / Main Tab) */}
           {renderDocumentPane(activeItem, 'left')}
-
-          {/* SECONDARY PANE (Right Pane in Split View) */}
-          {isSplitView && (
-            secondItem ? (
-              renderDocumentPane(secondItem, 'right')
-            ) : (
-              <div className="flex-1 h-full flex flex-col items-center justify-center p-6 text-center bg-zinc-900 border-l border-zinc-800 text-gray-400">
-                <SquareSplitHorizontal className="w-10 h-10 text-[#FF6600] mb-3 opacity-80" />
-                <h4 className="text-sm font-bold text-gray-200 mb-1">
-                  Split View Comparison
-                </h4>
-                <p className="text-xs text-gray-400 max-w-xs mb-4">
-                  Open another note (e.g. Solution or Question) to view and compare both side-by-side.
-                </p>
-                <p className="text-[11px] text-gray-500">
-                  Tip: Minimize the viewer (—) and click any other note on the course page to open it here!
-                </p>
-              </div>
-            )
-          )}
 
         </div>
 
