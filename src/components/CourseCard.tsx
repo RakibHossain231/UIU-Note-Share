@@ -49,7 +49,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
           </span>
           <button
             onClick={handlePinClick}
-            aria-label={isPinned ? 'Unpin course' : 'Pin course'}
+            aria-label={isPinned ? 'Remove from Saved' : 'Save course'}
             aria-pressed={isPinned}
             className={cn(
               'border-2 p-1.5 transition-colors',

@@ -6,6 +6,7 @@ import { SupabaseService } from '../services/supabaseService';
 import { checkSupabaseConnection } from '../services/supabaseClient';
 import { DepartmentInfo } from '../data/departments';
 import { INITIAL_COURSES } from '../data/courses';
+import { useToast } from './ToastContext';
 
 interface DataContextType {
   courses: Course[];
@@ -94,6 +95,7 @@ const sanitizeResources = (resList: ResourceItem[]): ResourceItem[] => {
 };
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { showToast } = useToast();
   const [courses, setCourses] = useState<Course[]>([]);
   const [resources, setResources] = useState<ResourceItem[]>([]);
   const [contributors, setContributors] = useState<Contributor[]>([]);
@@ -401,8 +403,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const handleTogglePin = (courseId: string) => {
+    const wasSaved = pinnedCourseIds.includes(courseId);
     const updated = StorageService.togglePinCourse(courseId);
     setPinnedCourseIds(updated);
+
+    const course = courses.find(c => c.id === courseId);
+    const name = course ? course.code : 'Course';
+    if (wasSaved) {
+      showToast({ message: `${name} removed from Saved`, variant: 'removed' });
+    } else {
+      showToast({ message: `${name} saved`, variant: 'saved', actionLabel: 'View', actionTo: '/saved' });
+    }
   };
 
   // Clean up orphan pinned course IDs if courses don't contain them

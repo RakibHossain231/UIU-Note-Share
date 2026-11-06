@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import React, { useState, useMemo } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { 
   ArrowLeft, 
   Bookmark, 
@@ -87,41 +87,32 @@ export const getCategoryForItem = (r: ResourceItem): CategoryKey => {
 
 export const CourseDetailPage: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
-  const navigate = useNavigate();
   const { courses, resources, pinnedCourseIds, togglePinCourse } = useData();
 
   // Selected Category (null = Level 1 Category Hub, string = Level 2 Trimester Grid)
-  // The view is remembered per course for this browser session, so coming back from a note page
-  // returns to the same category/filter instead of the hub.
-  const viewKey = `uiu_course_view_${courseId}`;
-  const savedView = (() => {
-    try {
-      return JSON.parse(sessionStorage.getItem(viewKey) || 'null') as
-        { selectedCategory: CategoryKey | null; sortOrder: 'newest' | 'oldest'; subFilter: string } | null;
-    } catch {
-      return null;
-    }
-  })();
-  const [selectedCategory, setSelectedCategory] = useState<CategoryKey | null>(savedView?.selectedCategory ?? null);
-  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>(savedView?.sortOrder ?? 'newest');
-  const [subFilter, setSubFilter] = useState<string>(savedView?.subFilter ?? 'all');
-
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(viewKey, JSON.stringify({ selectedCategory, sortOrder, subFilter }));
-    } catch {
-      /* storage unavailable - ignore */
-    }
-  }, [viewKey, selectedCategory, sortOrder, subFilter]);
+  const [selectedCategory, setSelectedCategory] = useState<CategoryKey | null>(null);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [subFilter, setSubFilter] = useState<string>('all');
 
   // Modals state (Multi-tab, Split View & Minimize support)
   const [previewTabs, setPreviewTabs] = useState<ResourceItem[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [isViewerMinimized, setIsViewerMinimized] = useState<boolean>(false);
 
-  // Notes open on their own page in the same tab (route: /note/:resourceId)
+  // Open tabs belong to one course: switching to another course starts clean
+  React.useEffect(() => {
+    setPreviewTabs([]);
+    setActiveTabId(null);
+    setIsViewerMinimized(false);
+  }, [courseId]);
+
   const handleOpenPreview = (item: ResourceItem) => {
-    navigate(`/note/${encodeURIComponent(item.id)}`);
+    setPreviewTabs(prev => {
+      if (prev.some(t => t.id === item.id)) return prev;
+      return [...prev, item];
+    });
+    setActiveTabId(item.id);
+    setIsViewerMinimized(false);
   };
 
   const handleCloseTab = (id: string) => {
@@ -363,7 +354,7 @@ export const CourseDetailPage: React.FC = () => {
           }`}
         >
           <Bookmark className={`w-3.5 h-3.5 ${isPinned ? 'fill-white' : ''}`} />
-          <span>{isPinned ? 'Saved' : 'Pin Course'}</span>
+          <span>{isPinned ? 'Saved' : 'Save Course'}</span>
         </button>
       </div>
 
@@ -635,7 +626,7 @@ export const CourseDetailPage: React.FC = () => {
 
           {/* Floating "Download all in ZIP File" Button (Screenshot 2) */}
           {activeItems.length > 0 && (
-            <div className="fixed bottom-6 right-6 z-30">
+            <div className={`fixed right-4 z-30 lg:right-6 ${isViewerMinimized && previewTabs.length > 0 ? 'bottom-40 lg:bottom-24' : 'bottom-20 lg:bottom-6'}`}>
               <button
                 onClick={handleDownloadZip}
                 className="flex items-center space-x-2 px-5 py-3 rounded-2xl bg-[#FF6600] hover:bg-orange-600 text-white font-bold text-xs sm:text-sm shadow-xl shadow-orange-500/30 transition-all transform hover:scale-105"

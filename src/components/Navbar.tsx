@@ -142,12 +142,18 @@ export const Navbar: React.FC = () => {
           })}
 
           <Link
-            to="/#pinned"
-            title="Pinned Courses"
-            className="flex items-center justify-between px-3 py-2.5 text-sm font-semibold text-foreground hover:bg-accent"
+            to="/saved"
+            title="Saved Courses"
+            onClick={() => scrollTopIfSame('/saved')}
+            className={cn(
+              'flex items-center justify-between border-2 px-3 py-2.5 text-sm font-semibold',
+              location.pathname === '/saved'
+                ? 'border-foreground bg-primary text-primary-foreground dark:border-border'
+                : 'border-transparent text-foreground hover:bg-accent'
+            )}
           >
             <span className="flex items-center gap-3">
-              <Bookmark className="h-4 w-4 text-primary" />
+              <Bookmark className={cn('h-4 w-4', location.pathname !== '/saved' && 'text-primary')} />
               Saved
             </span>
             <span className="bg-foreground px-1.5 font-mono text-xs font-bold text-background">{savedCount}</span>
@@ -217,7 +223,14 @@ export const Navbar: React.FC = () => {
             </Link>
           );
         })}
-        <Link to="/#pinned" className="relative flex flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-semibold text-muted-foreground">
+        <Link
+          to="/saved"
+          onClick={() => scrollTopIfSame('/saved')}
+          className={cn(
+            'relative flex flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-semibold',
+            location.pathname === '/saved' ? 'text-primary' : 'text-muted-foreground'
+          )}
+        >
           <Bookmark className="h-5 w-5" />
           <span>Saved</span>
           <span className="absolute right-3 top-1 bg-primary px-1 font-mono text-[9px] font-bold text-primary-foreground">

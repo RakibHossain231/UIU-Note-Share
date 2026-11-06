@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
 import { 
   X, 
   Download, 
@@ -18,11 +18,13 @@ import {
   Plus,
   ChevronDown,
   ChevronUp,
+  SquareSplitHorizontal,
   Layers,
   FileText
 } from 'lucide-react';
 import { ResourceItem } from '../types';
 import { useTheme } from '../context/ThemeContext';
+import { PdfCanvasViewer } from './PdfCanvasViewer';
 import { downloadResourceWithWatermark, triggerDirectDownload } from '../services/pdfWatermarkService';
 
 export interface PdfModalViewerProps {
@@ -36,7 +38,6 @@ export interface PdfModalViewerProps {
   onToggleMinimize?: (minimized: boolean) => void;
   availableResources?: ResourceItem[];
   onOpenResource?: (item: ResourceItem) => void;
-  asPage?: boolean; // render as a full standalone page instead of a modal overlay
 }
 
 const getFileType = (url: string, title?: string): 'image' | 'doc' | 'pdf' => {
@@ -185,6 +186,93 @@ interface TabSettings {
   darkInvert: boolean;
 }
 
+/**
+ * Standard zoom viewport: the content really grows to zoom% of the viewport and the
+ * viewport scrolls, so nothing can fall outside the reachable area.
+ * - mode "image": width and height both grow (scroll both ways).
+ * - mode "embed" (Google Drive / Docs iframe, which cannot be zoomed from outside):
+ *   the iframe is laid out at (width x height/zoom) and scaled by zoom, so it is exactly
+ *   zoom% wide and exactly one screen tall. Horizontal panning uses this scroll area;
+ *   vertical scrolling stays inside the document's own viewer (single scrollbar).
+ * The reading position (centre of the visible area) is preserved while zooming/rotating.
+ */
+const ZoomViewport: React.FC<{
+  zoom: number;
+  rotation: number;
+  mode: 'image' | 'embed';
+  children: React.ReactNode;
+}> = ({ zoom, rotation, mode, children }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const centre = useRef({ x: 0.5, y: 0.5 });
+  const [size, setSize] = useState({ w: 0, h: 0 });
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => setSize({ w: el.clientWidth, h: el.clientHeight });
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const factor = zoom / 100;
+  const boxW = size.w * factor;
+  const isEmbed = mode === 'embed';
+  const boxH = isEmbed ? size.h : size.h * factor;
+  const rotated = rotation % 180 !== 0;
+  const sizerW = rotated ? boxH : boxW;
+  const sizerH = rotated ? boxW : boxH;
+
+  const handleScroll = () => {
+    const el = ref.current;
+    if (!el) return;
+    if (el.scrollWidth > el.clientWidth) centre.current.x = (el.scrollLeft + el.clientWidth / 2) / el.scrollWidth;
+    if (el.scrollHeight > el.clientHeight) centre.current.y = (el.scrollTop + el.clientHeight / 2) / el.scrollHeight;
+  };
+
+  // Keep the same part of the document in the middle after zoom / rotate / resize
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (el.scrollWidth <= el.clientWidth) centre.current.x = 0.5;
+    if (el.scrollHeight <= el.clientHeight) centre.current.y = 0.5;
+    el.scrollLeft = centre.current.x * el.scrollWidth - el.clientWidth / 2;
+    el.scrollTop = centre.current.y * el.scrollHeight - el.clientHeight / 2;
+  }, [sizerW, sizerH]);
+
+  return (
+    <div ref={ref} onScroll={handleScroll} className="flex h-full w-full overflow-auto">
+      <div className="relative m-auto shrink-0" style={{ width: sizerW, height: sizerH }}>
+        <div
+          className="absolute left-1/2 top-1/2"
+          style={{
+            width: boxW,
+            height: boxH,
+            transform: `translate(-50%, -50%) rotate(${rotation}deg)`
+          }}
+        >
+          {isEmbed ? (
+            <div
+              className="relative"
+              style={{
+                width: size.w,
+                height: size.h / factor,
+                transform: `scale(${factor})`,
+                transformOrigin: '0 0'
+              }}
+            >
+              {children}
+            </div>
+          ) : (
+            children
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({ 
   item, 
   items, 
@@ -195,8 +283,7 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
   isMinimized = false,
   onToggleMinimize,
   availableResources = [],
-  onOpenResource,
-  asPage = false
+  onOpenResource
 }) => {
   // Normalize items list (supports both items prop and single item legacy prop)
   const currentItems = useMemo(() => {
@@ -217,11 +304,11 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
 
   const { isDark, toggleTheme } = useTheme();
 
-  // Per-Tab Settings: Zoom and Rotation are remembered per tab!
+  // Per-Tab Settings: Zoom, Rotation are remembered per tab!
   const [tabSettings, setTabSettings] = useState<Record<string, TabSettings>>({});
 
   // Split View state
-  const isSplitView = false; // split view has been removed
+  const [isSplitView, setIsSplitView] = useState<boolean>(false);
   const [focusedPane, setFocusedPane] = useState<'left' | 'right'>('left');
   const [secondTabId, setSecondTabId] = useState<string | null>(null);
 
@@ -259,18 +346,34 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
 
   // Helper to read / write per-tab settings
   const getSettingsFor = (id: string): TabSettings => {
-    return tabSettings[id] || { zoom: 145, rotation: 0, darkInvert: false };
+    return tabSettings[id] || { zoom: 100, rotation: 0, darkInvert: false };
   };
 
   const updateSettingFor = (id: string, partial: Partial<TabSettings>) => {
     setTabSettings(prev => ({
       ...prev,
       [id]: {
-        ...(prev[id] || { zoom: 145, rotation: 0, darkInvert: false }),
+        ...(prev[id] || { zoom: 100, rotation: 0, darkInvert: false }),
         ...partial
       }
     }));
   };
+
+  // The viewer owns the page while it is open, so the page behind it must not scroll
+  const hasItems = currentItems.length > 0;
+  useEffect(() => {
+    if (!hasItems || isMinimized) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [hasItems, isMinimized]);
+
+  // Leaving split view always returns focus to the main pane
+  useEffect(() => {
+    if (!isSplitView) setFocusedPane('left');
+  }, [isSplitView]);
 
   // Fullscreen change listener
   useEffect(() => {
@@ -308,15 +411,13 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
   // Keyboard shortcut Esc
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !asPage) {
-        if (!isMinimized) {
-          handleCloseViewer();
-        }
+      if (e.key === 'Escape' && !isMinimized && !document.fullscreenElement) {
+        onToggleMinimize?.(true);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, isMinimized, asPage]);
+  }, [isMinimized, onToggleMinimize]);
 
   if (currentItems.length === 0 || !activeItem) {
     return null;
@@ -326,7 +427,7 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
   if (isMinimized) {
     return (
       <div 
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-zinc-900/95 dark:bg-[#1C1C1E]/95 border-2 border-[#FF6600]/80 text-white px-4 py-3 rounded-2xl shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom duration-200 cursor-pointer hover:border-[#FF6600] hover:scale-[1.02] transition-all"
+        className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-50 flex items-center gap-3 bg-zinc-900/95 dark:bg-[#1C1C1E]/95 border-2 border-[#FF6600]/80 text-white px-4 py-3 rounded-2xl shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom duration-200 cursor-pointer hover:border-[#FF6600] hover:scale-[1.02] transition-all"
         onClick={() => onToggleMinimize?.(false)}
       >
         <div className="flex items-center space-x-2.5">
@@ -365,7 +466,7 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
   }
 
   // Active settings for focused document
-  const focusedSettings = focusedItem ? getSettingsFor(focusedItem.id) : { zoom: 145, rotation: 0, darkInvert: false };
+  const focusedSettings = focusedItem ? getSettingsFor(focusedItem.id) : { zoom: 100, rotation: 0, darkInvert: false };
 
   const handleDownload = async (itemToDownload: ResourceItem) => {
     if (isDownloading) return;
@@ -413,6 +514,45 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
   // Resources that can be added as new tabs
   const unopenResources = availableResources.filter(r => !currentItems.some(ci => ci.id === r.id));
 
+  // Open a note into pane 2 without changing what pane 1 shows
+  const openInSecondPane = (resource: ResourceItem) => {
+    const keepActive = activeItem.id;
+    setSecondTabId(resource.id);
+    onOpenResource?.(resource);
+    onSelectTab?.(keepActive);
+  };
+
+  // Embedded preview for Office documents and for PDFs the viewer cannot fetch itself
+  const embeddedPreview = (docItem: ResourceItem, iframeKey: number, embedUrl: string, settings: TabSettings) => (
+    <ZoomViewport zoom={settings.zoom} rotation={settings.rotation} mode="embed">
+      <iframe
+        key={iframeKey}
+        src={embedUrl}
+        title={docItem.title}
+        onLoad={() => setLoadingMap(prev => ({ ...prev, [docItem.id]: false }))}
+        className="h-full w-full border-0 bg-white"
+        allow="autoplay"
+        loading="lazy"
+      />
+
+      {/* Protective Shield Blocker for Google Drive popup */}
+      <div 
+        className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 w-10 h-10 sm:w-11 sm:h-11 z-20 pointer-events-auto bg-[#181818] rounded-xl flex items-center justify-center shadow-lg border border-zinc-700/60 select-none cursor-default"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        title="UIU Note Share Reader"
+      >
+        <span className="text-[10px] font-black text-[#FF6600] tracking-wider uppercase">UIU</span>
+      </div>
+    </ZoomViewport>
+  );
+
   // Single Pane Renderer
   const renderDocumentPane = (docItem: ResourceItem, paneType: 'left' | 'right') => {
     const isThisFocused = isSplitView && focusedPane === paneType;
@@ -440,7 +580,7 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
                   ? 'bg-[#FF6600] text-white shadow-sm' 
                   : 'bg-zinc-800 text-zinc-400'
               }`}>
-                {isThisFocused ? 'Active Focused Pane' : `Pane (${paneType === 'left' ? '1' : '2'})`}
+                {`Pane ${paneType === 'left' ? '1' : '2'}${isThisFocused ? ' · Active' : ''}`}
               </span>
               <span className="font-semibold text-zinc-300 truncate text-[11px]">
                 {docItem.title}
@@ -498,62 +638,30 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
         )}
 
         {/* Document Body */}
-        <div className="relative flex-1 w-full h-full overflow-hidden flex items-center justify-center p-1 sm:p-2">
+        <div className="relative flex-1 min-h-0 w-full overflow-hidden">
           {fType === 'image' ? (
-            <div 
-              className="w-full h-full flex items-center justify-center overflow-auto"
-              style={{
-                filter: 'none', // document colors are never altered
-              }}
-            >
+            <ZoomViewport zoom={settings.zoom} rotation={settings.rotation} mode="image">
               <img
                 key={iframeKey}
                 src={imageSrc}
                 alt={docItem.title}
                 onLoad={() => setLoadingMap(prev => ({ ...prev, [docItem.id]: false }))}
                 onError={() => setLoadingMap(prev => ({ ...prev, [docItem.id]: false }))}
-                className="max-w-full max-h-full object-contain select-none transition-transform duration-150 rounded-lg shadow-xl"
-                style={{
-                  transform: `scale(${settings.zoom / 100}) rotate(${settings.rotation}deg)`,
-                  transformOrigin: 'center center'
-                }}
+                className="h-full w-full select-none object-contain"
+                draggable={false}
               />
-            </div>
+            </ZoomViewport>
+          ) : fType === 'pdf' ? (
+            <PdfCanvasViewer
+              key={iframeKey}
+              fileUrl={docItem.fileUrl}
+              zoom={settings.zoom}
+              rotation={settings.rotation}
+              onReady={() => setLoadingMap(prev => ({ ...prev, [docItem.id]: false }))}
+              fallback={embeddedPreview(docItem, iframeKey, embedUrl, settings)}
+            />
           ) : (
-            <div 
-              className="relative w-full h-full transition-all duration-200 flex items-center justify-center overflow-hidden"
-              style={{
-                filter: 'none', // document colors are never altered
-                transform: `scale(${settings.zoom / 100}) rotate(${settings.rotation}deg)`,
-                transformOrigin: 'center center'
-              }}
-            >
-              <iframe
-                key={iframeKey}
-                src={embedUrl}
-                title={docItem.title}
-                onLoad={() => setLoadingMap(prev => ({ ...prev, [docItem.id]: false }))}
-                className="w-full h-full border-0 bg-white rounded-lg shadow-sm"
-                allow="autoplay"
-                loading="lazy"
-              />
-
-              {/* Protective Shield Blocker for Google Drive popup */}
-              <div 
-                className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 w-10 h-10 sm:w-11 sm:h-11 z-20 pointer-events-auto bg-[#181818] rounded-xl flex items-center justify-center shadow-lg border border-zinc-700/60 select-none cursor-default"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                title="UIU Note Share Reader"
-              >
-                <span className="text-[10px] font-black text-[#FF6600] tracking-wider uppercase">UIU</span>
-              </div>
-            </div>
+            embeddedPreview(docItem, iframeKey, embedUrl, settings)
           )}
         </div>
       </div>
@@ -561,16 +669,13 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
   };
 
   return (
-    <div className={asPage ? "fixed inset-0 z-50 bg-white dark:bg-[#1A1A1C] flex" : "fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4"}>
+    <div className="fixed inset-0 z-50 flex !mt-0 bg-white dark:bg-[#1A1A1C] lg:left-64 lg:z-30">
       <div 
         id="pdf-viewer-container"
-        className={asPage
-          ? "relative w-full h-full bg-white dark:bg-[#1A1A1C] flex flex-col overflow-hidden"
-          : "relative w-full max-w-6xl h-[94vh] bg-white dark:bg-[#1A1A1C] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200 dark:border-zinc-800"}
+        className="relative flex h-full w-full flex-col overflow-hidden bg-white dark:bg-[#1A1A1C]"
       >
         
-        {/* 1. TOP TAB BAR (Multi-Tab Support) - hidden on the standalone note page */}
-        {!asPage && (
+        {/* 1. TOP TAB BAR (Multi-Tab Support) */}
         <div className="bg-gray-100 dark:bg-[#121214] border-b border-gray-200 dark:border-zinc-800 px-3 pt-2 flex items-center justify-between gap-2 overflow-x-auto">
           <div className="flex items-center space-x-1.5 overflow-x-auto py-0.5">
             {currentItems.map((tab) => {
@@ -582,7 +687,11 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
                   key={tab.id}
                   onClick={() => {
                     if (isSplitView && focusedPane === 'right') {
-                      setSecondTabId(tab.id);
+                      if (tab.id === activeItem.id) {
+                        setFocusedPane('left');
+                      } else {
+                        setSecondTabId(tab.id);
+                      }
                     } else {
                       onSelectTab?.(tab.id);
                     }
@@ -604,11 +713,11 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
                   {isSplitView && (
                     tab.id === activeItem.id ? (
                       <span className="text-[8px] px-1 py-0.2 rounded bg-orange-500/20 text-orange-400 font-extrabold border border-orange-500/30">
-                        LEFT
+                        PANE 1
                       </span>
                     ) : tab.id === secondItem?.id ? (
                       <span className="text-[8px] px-1 py-0.2 rounded bg-cyan-500/20 text-cyan-400 font-extrabold border border-cyan-500/30">
-                        RIGHT
+                        PANE 2
                       </span>
                     ) : null
                   )}
@@ -641,8 +750,6 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
           </div>
         </div>
 
-        )}
-
         {/* 2. CONTROLS TOOLBAR */}
         <div className="flex flex-wrap items-center justify-between px-3 sm:px-4 py-2 border-b border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-[#18181A] gap-2">
           
@@ -663,6 +770,22 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
           {/* Action Controls */}
           <div className="flex items-center space-x-1 sm:space-x-1.5">
             
+            {/* SPLIT VIEW TOGGLE */}
+            <button
+              onClick={() => setIsSplitView(!isSplitView)}
+              className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                isSplitView
+                  ? 'bg-[#FF6600] text-white shadow-orange-500/20'
+                  : 'bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 hover:border-[#FF6600]'
+              }`}
+              title="Compare two notes side by side"
+            >
+              <SquareSplitHorizontal className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{isSplitView ? 'Split View ON' : 'Split View'}</span>
+            </button>
+
+            <div className="h-4 w-[1px] bg-gray-300 dark:bg-zinc-700 mx-0.5 sm:mx-1" />
+
             {/* Theme toggle: switches the interface light/dark only - the document keeps its original colors */}
             <button
               onClick={toggleTheme}
@@ -691,7 +814,7 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
               <button
                 onClick={() => {
                   if (focusedItem) {
-                    updateSettingFor(focusedItem.id, { zoom: Math.max(50, focusedSettings.zoom - 15) });
+                    updateSettingFor(focusedItem.id, { zoom: Math.max(50, focusedSettings.zoom - 25) });
                   }
                 }}
                 className="p-1 text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white"
@@ -705,7 +828,7 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
               <button
                 onClick={() => {
                   if (focusedItem) {
-                    updateSettingFor(focusedItem.id, { zoom: Math.min(220, focusedSettings.zoom + 15) });
+                    updateSettingFor(focusedItem.id, { zoom: Math.min(300, focusedSettings.zoom + 25) });
                   }
                 }}
                 className="p-1 text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white"
@@ -738,20 +861,9 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
               {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             </button>
 
-            {/* MINIMIZE BUTTON (Exit fullscreen if active) */}
-            {!asPage && (
-              <button
-                onClick={handleMinimize}
-                className="p-1.5 rounded-xl text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-zinc-800 transition-colors"
-                title="Minimize to Floating Bar"
-              >
-                <Minus className="w-4 h-4" />
-              </button>
-            )}
-
             <div className="h-4 w-[1px] bg-gray-300 dark:bg-zinc-700 mx-0.5 sm:mx-1" />
 
-            {/* Direct Download Button (before Close) */}
+            {/* Direct Download Button (At the extreme right) */}
             <button
               onClick={() => focusedItem && handleDownload(focusedItem)}
               disabled={isDownloading}
@@ -771,6 +883,15 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
               )}
             </button>
 
+            {/* MINIMIZE BUTTON (Exit fullscreen if active) */}
+            <button
+              onClick={handleMinimize}
+              className="p-1.5 rounded-xl text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-zinc-800 transition-colors"
+              title="Minimize to Floating Bar"
+            >
+              <Minus className="w-4 h-4" />
+            </button>
+
             {/* CLOSE BUTTON (Exit fullscreen if active) */}
             <button
               onClick={handleCloseViewer}
@@ -788,6 +909,42 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
           
           {/* PRIMARY PANE (Left / Main Tab) */}
           {renderDocumentPane(activeItem, 'left')}
+
+          {/* SECONDARY PANE (Right Pane in Split View) */}
+          {isSplitView && (
+            secondItem ? (
+              renderDocumentPane(secondItem, 'right')
+            ) : (
+              <div className="flex-1 h-full overflow-y-auto flex flex-col items-center justify-center p-6 text-center bg-zinc-900 border-l border-zinc-800 text-gray-400">
+                <SquareSplitHorizontal className="w-10 h-10 text-[#FF6600] mb-3 opacity-80" />
+                <h4 className="text-sm font-bold text-gray-200 mb-1">
+                  Split View Comparison
+                </h4>
+                {unopenResources.length > 0 ? (
+                  <>
+                    <p className="text-xs text-gray-400 max-w-xs mb-4">
+                      Pick another note to view it side by side.
+                    </p>
+                    <div className="w-full max-w-sm max-h-60 overflow-y-auto space-y-1.5 text-left">
+                      {unopenResources.map(r => (
+                        <button
+                          key={r.id}
+                          onClick={() => openInSecondPane(r)}
+                          className="w-full truncate px-3 py-2 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-gray-200 border border-zinc-700 hover:border-[#FF6600] rounded-lg transition-colors"
+                        >
+                          {r.title}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-xs text-gray-400 max-w-xs">
+                    There are no other notes in this course to compare with.
+                  </p>
+                )}
+              </div>
+            )
+          )}
 
         </div>
 

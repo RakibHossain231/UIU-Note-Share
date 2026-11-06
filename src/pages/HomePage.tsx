@@ -1,8 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { 
   BookOpen, 
-  Sparkles, 
-  Bookmark, 
+  Sparkles,  
   Search, 
   FolderPlus, 
   GraduationCap, 
@@ -18,7 +17,7 @@ import { DepartmentFilter } from '../components/DepartmentFilter';
 import { cn } from '@/lib/utils';
 
 export const HomePage: React.FC = () => {
-  const { courses, resources, contributors, visitorCount, selectedDepartment, searchQuery, setSearchQuery, pinnedCourseIds } = useData();
+  const { courses, resources, contributors, visitorCount, selectedDepartment, searchQuery, setSearchQuery } = useData();
   const [selectedTrimester, setSelectedTrimester] = useState<number | 'all'>('all');
 
   // Filter courses by department, trimester, and search query
@@ -48,11 +47,6 @@ export const HomePage: React.FC = () => {
       return true;
     });
   }, [courses, selectedDepartment, selectedTrimester, searchQuery]);
-
-  // Pinned courses
-  const pinnedCourses = useMemo(() => {
-    return courses.filter(c => pinnedCourseIds.includes(c.id));
-  }, [courses, pinnedCourseIds]);
 
   const ink = 'border-foreground dark:border-border';
 
@@ -120,14 +114,6 @@ export const HomePage: React.FC = () => {
             ))}
           </dl>
         </motion.section>
-      )}
-
-      {/* Pinned courses (hidden during search) */}
-      {pinnedCourses.length > 0 && !searchQuery.trim() && (
-        <section id="pinned" className="scroll-mt-24 space-y-6">
-          <SectionTitle icon={<Bookmark className="h-4 w-4 fill-current" />} title="My Pinned Courses" count={pinnedCourses.length} />
-          <Grid list={pinnedCourses} prefix="pinned-" />
-        </section>
       )}
 
       {searchQuery.trim() ? (

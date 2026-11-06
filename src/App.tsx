@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { MotionConfig } from 'motion/react';
 import { ThemeProvider } from './context/ThemeContext';
 import { DataProvider } from './context/DataContext';
+import { ToastProvider } from './context/ToastContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { ScrollToTop } from './components/ScrollToTop';
@@ -13,7 +14,7 @@ import { ContributorsPage } from './pages/ContributorsPage';
 import { HowToUsePage } from './pages/HowToUsePage';
 import { AboutPage } from './pages/AboutPage';
 import { AdminDashboard } from './pages/AdminDashboard';
-import { NotePage } from './pages/NotePage';
+import { SavedPage } from './pages/SavedPage';
 
 const AnalyticsTracker: React.FC = () => {
   const location = useLocation();
@@ -25,9 +26,10 @@ const AnalyticsTracker: React.FC = () => {
 
 export const App: React.FC = () => {
   return (
+    <BrowserRouter>
     <ThemeProvider>
+      <ToastProvider>
       <DataProvider>
-        <BrowserRouter>
           <AnalyticsTracker />
           <ScrollToTop />
           <MotionConfig reducedMotion="user">
@@ -41,7 +43,7 @@ export const App: React.FC = () => {
                 <Route path="/contributors" element={<ContributorsPage />} />
                 <Route path="/how-to-use" element={<HowToUsePage />} />
                 <Route path="/about" element={<AboutPage />} />
-                <Route path="/note/:resourceId" element={<NotePage />} />
+                <Route path="/saved" element={<SavedPage />} />
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
@@ -50,9 +52,10 @@ export const App: React.FC = () => {
             </div>
           </div>
           </MotionConfig>
-        </BrowserRouter>
       </DataProvider>
+      </ToastProvider>
     </ThemeProvider>
+    </BrowserRouter>
   );
 };
 
