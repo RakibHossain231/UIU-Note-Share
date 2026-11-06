@@ -35,8 +35,8 @@ export const HowToUsePage: React.FC = () => {
       a: 'No! UIU Note Share is 100% free and open. No account registration or login is required to browse, read, download, or contribute notes.'
     },
     {
-      q: 'How does the "Pin / Save Course" feature work?',
-      a: 'Clicking the Bookmark (📌) icon on any course card pins it to your personal saved list. Pinned courses stay at the very top of your homepage and update the "Saved" counter in the Navbar, so you can jump right into your current trimester subjects without searching.'
+      q: 'How does the "Save Course" feature work?',
+      a: 'Clicking the Bookmark icon on any course card saves it to your personal list and shows a confirmation message. Your saved courses are collected on the "Saved" page in the Navbar, where the counter shows how many you have, so you can jump right into your current trimester subjects without searching.'
     },
     {
       q: 'Will my raw Google Drive link be exposed to other students?',
@@ -157,14 +157,14 @@ export const HowToUsePage: React.FC = () => {
                 </div>
                 <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center space-x-2">
                   <Bookmark className="w-4 h-4 text-amber-500" />
-                  <span>Pin / Save Current Courses</span>
+                  <span>Save Current Courses</span>
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                  Taking 3 or 4 courses this trimester? Click the <strong>Bookmark (📌)</strong> icon on any course card. Pinned courses automatically stay at the very top of your homepage under <strong>"Saved Courses"</strong> and in the Navbar.
+                  Taking 3 or 4 courses this trimester? Click the <strong>Bookmark</strong> icon on any course card. Saved courses are collected on the <strong>"Saved"</strong> page in the Navbar.
                 </p>
               </div>
               <div className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold bg-amber-50 dark:bg-amber-950/30 p-2.5 rounded-xl">
-                📌 Never search again: Click "Saved" in the navbar to open your active subjects immediately.
+                Never search again: Click "Saved" in the navbar to open your active subjects immediately.
               </div>
             </div>
 

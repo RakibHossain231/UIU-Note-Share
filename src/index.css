@@ -3,12 +3,58 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --background: 30 25% 98%;
+    --foreground: 20 14% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 14% 10%;
+    --primary: 24 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 30 16% 94%;
+    --secondary-foreground: 20 14% 14%;
+    --muted: 30 16% 94%;
+    --muted-foreground: 20 8% 40%;
+    --accent: 24 100% 95%;
+    --accent-foreground: 20 80% 28%;
+    --destructive: 0 72% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 30 14% 88%;
+    --input: 30 14% 88%;
+    --ring: 24 100% 50%;
+    --radius: 0.25rem;
+    --shadow: 20 30% 10%;
+  }
+  .dark {
+    --background: 0 0% 7%;
+    --foreground: 30 10% 95%;
+    --card: 0 0% 11%;
+    --card-foreground: 30 10% 95%;
+    --primary: 24 100% 55%;
+    --primary-foreground: 0 0% 8%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 30 10% 95%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 30 6% 66%;
+    --accent: 24 40% 16%;
+    --accent-foreground: 24 100% 78%;
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 19%;
+    --input: 0 0% 19%;
+    --ring: 24 100% 55%;
+    --shadow: 0 0% 0%;
+  }
+  h1, h2, h3 { letter-spacing: -0.02em; }
+  :focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+}
+
+@layer base {
   * {
     -webkit-tap-highlight-color: transparent;
   }
 
   body {
-    font-family: 'Montserrat', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   }
 }
 
@@ -38,3 +84,21 @@
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #4b5563;
 }
+
+/* ---- Design language: "catalogue" - ruled paper, ink borders, hard shadows ---- */
+.paper-grid {
+  background-image:
+    linear-gradient(hsl(var(--foreground) / 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--foreground) / 0.06) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+.hard {
+  border: 2px solid hsl(var(--foreground));
+  box-shadow: 5px 5px 0 hsl(var(--foreground));
+}
+.dark .hard {
+  border-color: hsl(var(--border));
+  box-shadow: 5px 5px 0 hsl(var(--primary));
+}
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }

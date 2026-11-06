@@ -1,5 +1,9 @@
 import { defineConfig, Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const srcDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), './src');
 
 function driveProxyPlugin(): Plugin {
   return {
@@ -50,6 +54,7 @@ function driveProxyPlugin(): Plugin {
 
 export default defineConfig({
   plugins: [react(), driveProxyPlugin()],
+  resolve: { alias: { '@': srcDir } },
   server: {
     port: 3000,
     open: true,

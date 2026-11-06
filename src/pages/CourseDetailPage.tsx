@@ -99,6 +99,13 @@ export const CourseDetailPage: React.FC = () => {
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [isViewerMinimized, setIsViewerMinimized] = useState<boolean>(false);
 
+  // Open tabs belong to one course: switching to another course starts clean
+  React.useEffect(() => {
+    setPreviewTabs([]);
+    setActiveTabId(null);
+    setIsViewerMinimized(false);
+  }, [courseId]);
+
   const handleOpenPreview = (item: ResourceItem) => {
     setPreviewTabs(prev => {
       if (prev.some(t => t.id === item.id)) return prev;
@@ -347,7 +354,7 @@ export const CourseDetailPage: React.FC = () => {
           }`}
         >
           <Bookmark className={`w-3.5 h-3.5 ${isPinned ? 'fill-white' : ''}`} />
-          <span>{isPinned ? 'Saved' : 'Pin Course'}</span>
+          <span>{isPinned ? 'Saved' : 'Save Course'}</span>
         </button>
       </div>
 
@@ -619,7 +626,7 @@ export const CourseDetailPage: React.FC = () => {
 
           {/* Floating "Download all in ZIP File" Button (Screenshot 2) */}
           {activeItems.length > 0 && (
-            <div className="fixed bottom-6 right-6 z-30">
+            <div className={`fixed right-4 z-30 lg:right-6 ${isViewerMinimized && previewTabs.length > 0 ? 'bottom-40 lg:bottom-24' : 'bottom-20 lg:bottom-6'}`}>
               <button
                 onClick={handleDownloadZip}
                 className="flex items-center space-x-2 px-5 py-3 rounded-2xl bg-[#FF6600] hover:bg-orange-600 text-white font-bold text-xs sm:text-sm shadow-xl shadow-orange-500/30 transition-all transform hover:scale-105"
