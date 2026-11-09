@@ -17,8 +17,22 @@ const STORAGE_KEYS = {
   ADMIN_CREDENTIALS: 'uiu_admin_credentials_v3',
   CREATOR_PROFILE: 'uiu_creator_profile_v1',
   VISITORS: 'uiu_total_visitors_v1',
-  COURSE_VIEWS: 'uiu_course_views_v1'
+  COURSE_VIEWS: 'uiu_course_views_v1',
+  RECENT_VIEWS: 'uiu_recent_views_v1'
 };
+
+export interface RecentViewItem {
+  id: string;
+  title: string;
+  courseId: string;
+  courseCode?: string;
+  courseTitle?: string;
+  type: string;
+  trimesterCode?: string;
+  term?: string;
+  fileUrl: string;
+  viewedAt: number;
+}
 
 export interface CreatorProfileData {
   name: string;
@@ -417,5 +431,31 @@ export const StorageService = {
     views[courseId] = (views[courseId] || 0) + 1;
     this.setCourseViews(views);
     return views;
+  },
+
+  // Recent Views for Continue Reading
+  getRecentViews(): RecentViewItem[] {
+    const raw = localStorage.getItem(STORAGE_KEYS.RECENT_VIEWS);
+    if (!raw) return [];
+    try {
+      return JSON.parse(raw) || [];
+    } catch {
+      return [];
+    }
+  },
+
+  addRecentView(item: RecentViewItem): RecentViewItem[] {
+    try {
+      const current = this.getRecentViews().filter(r => r.id !== item.id);
+      const updated = [item, ...current].slice(0, 8);
+      localStorage.setItem(STORAGE_KEYS.RECENT_VIEWS, JSON.stringify(updated));
+      return updated;
+    } catch {
+      return [];
+    }
+  },
+
+  clearRecentViews(): void {
+    localStorage.removeItem(STORAGE_KEYS.RECENT_VIEWS);
   }
 };
