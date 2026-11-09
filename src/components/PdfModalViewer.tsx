@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   X, 
   Download, 
@@ -20,7 +20,8 @@ import {
   ChevronUp,
   SquareSplitHorizontal,
   Layers,
-  FileText
+  FileText,
+  Search
 } from 'lucide-react';
 import { ResourceItem } from '../types';
 import { downloadResourceWithWatermark, triggerDirectDownload } from '../services/pdfWatermarkService';
@@ -36,6 +37,7 @@ export interface PdfModalViewerProps {
   onToggleMinimize?: (minimized: boolean) => void;
   availableResources?: ResourceItem[];
   onOpenResource?: (item: ResourceItem) => void;
+  onAddTab?: (item: ResourceItem) => void;
 }
 
 const getFileType = (url: string, title?: string): 'image' | 'doc' | 'pdf' => {
@@ -194,7 +196,8 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
   isMinimized = false,
   onToggleMinimize,
   availableResources = [],
-  onOpenResource
+  onOpenResource,
+  onAddTab
 }) => {
   // Normalize items list (supports both items prop and single item legacy prop)
   const currentItems = useMemo(() => {
@@ -228,6 +231,51 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
   const [downloadProgressText, setDownloadProgressText] = useState<string>('');
   const [showAddMenu, setShowAddMenu] = useState<boolean>(false);
+
+  // Pane refs and Ctrl+Wheel Zoom state
+  const leftPaneRef = useRef<HTMLDivElement | null>(null);
+  const rightPaneRef = useRef<HTMLDivElement | null>(null);
+  const [isCtrlDown, setIsCtrlDown] = useState<boolean>(false);
+  const [hoveredPane, setHoveredPane] = useState<'left' | 'right'>('left');
+  const [zoomIndicator, setZoomIndicator] = useState<{ docId: string; zoom: number; visible: boolean } | null>(null);
+
+  // Auto-hide zoom indicator after 1.2s
+  useEffect(() => {
+    if (zoomIndicator?.visible) {
+      const timer = setTimeout(() => {
+        setZoomIndicator(prev => prev ? { ...prev, visible: false } : null);
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [zoomIndicator]);
+
+  // Track Ctrl key press state
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Control' || e.ctrlKey) {
+        setIsCtrlDown(true);
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Control' || !e.ctrlKey) {
+        setIsCtrlDown(false);
+      }
+    };
+    const handleBlur = () => {
+      setIsCtrlDown(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
+
 
   // Sync secondary tab for Split View
   useEffect(() => {
@@ -268,6 +316,58 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
     }));
   };
 
+  // Native non-passive Wheel listener for smooth Ctrl + Scroll Zooming
+  useEffect(() => {
+    const handlePaneWheel = (e: WheelEvent, targetItem: ResourceItem | null) => {
+      if (!targetItem || !e.ctrlKey) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const delta = e.deltaY < 0 ? 10 : -10;
+      const currentZoom = getSettingsFor(targetItem.id).zoom;
+      const nextZoom = Math.min(250, Math.max(50, currentZoom + delta));
+
+      updateSettingFor(targetItem.id, { zoom: nextZoom });
+      setZoomIndicator({ docId: targetItem.id, zoom: nextZoom, visible: true });
+    };
+
+    const leftEl = leftPaneRef.current;
+    const rightEl = rightPaneRef.current;
+
+    const onLeftWheel = (e: WheelEvent) => {
+      handlePaneWheel(e, activeItem);
+    };
+    const onRightWheel = (e: WheelEvent) => {
+      handlePaneWheel(e, secondItem || activeItem);
+    };
+
+    if (leftEl) leftEl.addEventListener('wheel', onLeftWheel, { passive: false });
+    if (rightEl) rightEl.addEventListener('wheel', onRightWheel, { passive: false });
+
+    const container = document.getElementById('pdf-viewer-container');
+    const onContainerWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const targetDoc = (isSplitView && hoveredPane === 'right' && secondItem) ? secondItem : activeItem;
+      if (targetDoc) {
+        const delta = e.deltaY < 0 ? 10 : -10;
+        const currentZoom = getSettingsFor(targetDoc.id).zoom;
+        const nextZoom = Math.min(250, Math.max(50, currentZoom + delta));
+        updateSettingFor(targetDoc.id, { zoom: nextZoom });
+        setZoomIndicator({ docId: targetDoc.id, zoom: nextZoom, visible: true });
+      }
+    };
+
+    if (container) container.addEventListener('wheel', onContainerWheel, { passive: false });
+
+    return () => {
+      if (leftEl) leftEl.removeEventListener('wheel', onLeftWheel);
+      if (rightEl) rightEl.removeEventListener('wheel', onRightWheel);
+      if (container) container.removeEventListener('wheel', onContainerWheel);
+    };
+  }, [activeItem, secondItem, isSplitView, hoveredPane, tabSettings]);
+
   // Fullscreen change listener
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -301,6 +401,22 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
     onClose?.();
   };
 
+  const handlePlusClick = async () => {
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen();
+      } catch (err) {
+        console.error(err);
+      }
+      setIsFullscreen(false);
+    }
+    if (activeItem && onAddTab) {
+      onAddTab(activeItem);
+    } else {
+      handleMinimize();
+    }
+  };
+
   // Keyboard shortcut Esc
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -318,24 +434,24 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
     return null;
   }
 
-  // FLOATING BOTTOM DOCK WHEN MINIMIZED (Solution 1)
+  // FLOATING BOTTOM DOCK WHEN MINIMIZED
   if (isMinimized) {
     return (
-      <div 
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-zinc-900/95 dark:bg-[#1C1C1E]/95 border-2 border-[#FF6600]/80 text-white px-4 py-3 rounded-2xl shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom duration-200 cursor-pointer hover:border-[#FF6600] hover:scale-[1.02] transition-all"
+      <div
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-zinc-900/95 dark:bg-[#1C1C1E]/95 border-2 border-[#FF6600] text-white px-4 py-3 rounded-2xl shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom duration-200 cursor-pointer hover:scale-[1.02] transition-all"
         onClick={() => onToggleMinimize?.(false)}
       >
         <div className="flex items-center space-x-2.5">
-          <span className="px-2.5 py-1 rounded-xl bg-[#FF6600] text-white font-black text-xs shadow-sm flex items-center space-x-1">
-            <Layers className="w-3.5 h-3.5" />
-            <span>{currentItems.length}</span>
+          <span className="px-2.5 py-1 rounded-xl bg-[#FF6600] text-white font-black text-xs shadow-sm flex items-center space-x-1 animate-pulse">
+            <Plus className="w-3.5 h-3.5" />
+            <span>Select Note</span>
           </span>
-          <div className="max-w-[200px] sm:max-w-[260px] truncate text-left">
+          <div className="max-w-[200px] sm:max-w-[280px] truncate text-left">
             <p className="text-xs font-bold text-gray-100 truncate">
               {activeItem.title}
             </p>
-            <p className="text-[10px] text-gray-400">
-              {currentItems.length > 1 ? `${currentItems.length} Notes Open · Click to expand` : 'Click to expand PDF viewer'}
+            <p className="text-[10px] text-orange-300 truncate">
+              {currentItems.length > 1 ? `${currentItems.length} Notes Open • Click to expand` : 'Click any note/solve on page to add tab'}
             </p>
           </div>
         </div>
@@ -420,13 +536,41 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
     const imageSrc = getImageSrc(docItem.fileUrl);
 
     return (
-      <div 
+      <div
         key={docItem.id}
+        ref={paneType === 'left' ? leftPaneRef : rightPaneRef}
         onClick={() => setFocusedPane(paneType)}
+        onMouseEnter={() => {
+          setHoveredPane(paneType);
+          window.focus();
+        }}
+        onMouseMove={(e) => {
+          if (e.ctrlKey && !isCtrlDown) setIsCtrlDown(true);
+          else if (!e.ctrlKey && isCtrlDown) setIsCtrlDown(false);
+        }}
         className={`relative flex-1 h-full flex flex-col bg-zinc-950 overflow-hidden transition-all duration-150 ${
           isSplitView ? (isThisFocused ? 'ring-2 ring-[#FF6600] shadow-xl' : 'opacity-90') : ''
         }`}
       >
+        {/* Transparent Capture Shield for Ctrl + Wheel Zoom (only active when Ctrl is held down) */}
+        {isCtrlDown && (
+          <div
+            className="absolute inset-0 z-30 cursor-zoom-in bg-transparent"
+            onMouseMove={(e) => {
+              if (!e.ctrlKey) setIsCtrlDown(false);
+            }}
+          />
+        )}
+
+        {/* Floating Zoom Indicator on Zoom */}
+        {zoomIndicator?.visible && zoomIndicator.docId === docItem.id && (
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 px-3.5 py-1.5 rounded-full bg-black/90 text-white text-xs font-mono font-bold tracking-wide shadow-2xl border border-white/20 backdrop-blur-md animate-in fade-in zoom-in duration-150 pointer-events-none flex items-center space-x-2">
+            <span className="w-2 h-2 rounded-full bg-[#FF6600] animate-ping" />
+            <span className="text-[#FF6600]">{zoomIndicator.zoom}%</span>
+            <span className="text-[10px] text-gray-400 font-sans">Ctrl + Scroll</span>
+          </div>
+        )}
+
         {/* Split View Pane Header (Shows which pane is active and quick selector) */}
         {isSplitView && (
           <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-900 border-b border-zinc-800 text-xs z-20">
@@ -624,6 +768,15 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
             })}
 
 
+            {/* PLUS (+) BUTTON TO OPEN ANOTHER PDF */}
+            <button
+              onClick={handlePlusClick}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-200 hover:text-[#FF6600] dark:hover:text-[#FF6600] hover:bg-orange-50 dark:hover:bg-orange-950/40 border border-dashed border-gray-300 dark:border-zinc-700 hover:border-[#FF6600] transition-all shadow-xs shrink-0 cursor-pointer group active:scale-95 ml-1"
+              title="Add another note to compare (e.g. Question and Solve side-by-side)"
+            >
+              <Plus className="w-4 h-4 text-[#FF6600] group-hover:rotate-90 transition-transform duration-200" strokeWidth={2.5} />
+              <span className="text-[11px] font-extrabold text-[#FF6600]">Add Note</span>
+            </button>
           </div>
 
           {/* Tab count & mode indicator */}
@@ -713,9 +866,18 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
               >
                 <ZoomOut className="w-3.5 h-3.5" />
               </button>
-              <span className="text-[11px] font-mono font-bold px-1.5 text-gray-700 dark:text-gray-300 min-w-10 text-center">
+              <button
+                onClick={() => {
+                  if (focusedItem) {
+                    updateSettingFor(focusedItem.id, { zoom: 145 });
+                    setZoomIndicator({ docId: focusedItem.id, zoom: 145, visible: true });
+                  }
+                }}
+                className="text-xs font-mono font-bold text-gray-700 dark:text-gray-200 px-1 hover:text-[#FF6600] transition-colors cursor-pointer"
+                title="Click to reset to default 145% zoom (or use Ctrl + Mouse Scroll)"
+              >
                 {focusedSettings.zoom}%
-              </span>
+              </button>
               <button
                 onClick={() => {
                   if (focusedItem) {
@@ -743,31 +905,35 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
               <RefreshCw className="w-4 h-4" />
             </button>
 
-            {/* Fullscreen */}
+            {/* Fullscreen Button */}
             <button
               onClick={toggleFullscreen}
-              className="p-1.5 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-zinc-800 transition-colors"
-              title="Fullscreen"
+              className={`w-8 h-8 flex items-center justify-center rounded-xl text-xs font-semibold transition-all border ${
+                isFullscreen
+                  ? 'bg-[#FF6600] text-white border-[#FF6600] shadow-sm'
+                  : 'bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-zinc-700 hover:border-blue-500 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/40 shadow-xs'
+              } active:scale-95`}
+              title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
             >
-              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+              {isFullscreen ? <Minimize2 className="w-4 h-4 stroke-[2.2]" /> : <Maximize2 className="w-4 h-4 stroke-[2.2]" />}
             </button>
 
-            {/* MINIMIZE BUTTON (Exit fullscreen if active) */}
+            {/* MINIMIZE BUTTON (Highlighted, tactile, distinct) */}
             <button
               onClick={handleMinimize}
-              className="p-1.5 rounded-xl text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-zinc-800 transition-colors"
-              title="Minimize to Floating Bar"
+              className="w-8 h-8 flex items-center justify-center rounded-xl bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white shadow-xs transition-all active:scale-95 group"
+              title="Minimize Viewer (Floating Dock)"
             >
-              <Minus className="w-4 h-4" />
+              <Minus className="w-4 h-4 stroke-[3] group-hover:scale-110 transition-transform" />
             </button>
 
-            {/* CLOSE BUTTON (Exit fullscreen if active) */}
+            {/* CLOSE BUTTON (Highlighted, tactile, distinct) */}
             <button
               onClick={handleCloseViewer}
-              className="p-1.5 rounded-xl text-gray-500 hover:text-rose-500 hover:bg-gray-200 dark:hover:bg-zinc-800 transition-colors"
-              title="Close Viewer"
+              className="w-8 h-8 flex items-center justify-center rounded-xl bg-rose-500/10 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 dark:hover:text-white shadow-xs transition-all active:scale-95 group"
+              title="Close Viewer (Esc)"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4 stroke-[2.8] group-hover:scale-110 transition-transform" />
             </button>
 
             <div className="h-4 w-[1px] bg-gray-300 dark:bg-zinc-700 mx-0.5 sm:mx-1" />

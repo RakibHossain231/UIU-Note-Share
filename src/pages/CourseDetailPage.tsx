@@ -127,6 +127,23 @@ export const CourseDetailPage: React.FC = () => {
     setActiveTabId(null);
     setIsViewerMinimized(false);
   };
+
+  const handleAddTabRequest = (currentActiveItem: ResourceItem) => {
+    // 1. Minimize viewer so background page is visible
+    setIsViewerMinimized(true);
+
+    // 2. Smoothly scroll to the active note on page so user can easily pick solve or related note
+    setTimeout(() => {
+      const cardEl = document.getElementById(`resource-item-${currentActiveItem.id}`);
+      if (cardEl) {
+        cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        cardEl.classList.add('ring-4', 'ring-[#FF6600]', 'scale-[1.02]');
+        setTimeout(() => {
+          cardEl.classList.remove('ring-4', 'ring-[#FF6600]', 'scale-[1.02]');
+        }, 2500);
+      }
+    }, 150);
+  };
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
@@ -510,6 +527,7 @@ export const CourseDetailPage: React.FC = () => {
                 return (
                   <div
                     key={item.id}
+                    id={`resource-item-${item.id}`}
                     onClick={() => handleOpenPreview(item)}
                     style={{ borderBottom: `4px solid ${cardColor}` }}
                     className="group relative flex flex-col justify-between text-left bg-white dark:bg-[#1E1E1E] border border-gray-200/80 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-1 cursor-pointer"
@@ -644,6 +662,7 @@ export const CourseDetailPage: React.FC = () => {
         onToggleMinimize={(min) => setIsViewerMinimized(min)}
         availableResources={courseResources}
         onOpenResource={handleOpenPreview}
+        onAddTab={handleAddTabRequest}
       />
 
       {/* Bulk Download Progress Modal */}
