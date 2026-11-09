@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   BookOpen, 
@@ -13,17 +13,14 @@ import {
   X, 
   Sparkles, 
   Layers,
-  HelpCircle,
-  GraduationCap,
-  FileText,
-  ArrowRight
+  HelpCircle 
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useData } from '../context/DataContext';
 
 export const Navbar: React.FC = () => {
   const { isDark, toggleTheme } = useTheme();
-  const { searchQuery, setSearchQuery, pinnedCourseIds, courses, resources, isAdmin } = useData();
+  const { searchQuery, setSearchQuery, pinnedCourseIds, courses, isAdmin } = useData();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -48,46 +45,8 @@ export const Navbar: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [navigate]);
 
-  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
-  const searchContainerRef = useRef<HTMLDivElement | null>(null);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
-        setShowSearchDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const searchResults = useMemo(() => {
-    if (!searchQuery.trim() || searchQuery.trim().length < 2) {
-      return { matchingCourses: [], matchingResources: [] };
-    }
-    const q = searchQuery.toLowerCase().replace(/[\s-]/g, '');
-
-    const matchingCourses = courses.filter(c => {
-      const code = c.code.toLowerCase().replace(/[\s-]/g, '');
-      const title = c.title.toLowerCase().replace(/[\s-]/g, '');
-      const abbr = (c.abbr || '').toLowerCase().replace(/[\s-]/g, '');
-      return code.includes(q) || title.includes(q) || abbr.includes(q);
-    }).slice(0, 4);
-
-    const matchingResources = resources.filter(r => {
-      const title = (r.title || '').toLowerCase().replace(/[\s-]/g, '');
-      const trim = (r.trimesterCode || '').toLowerCase();
-      const term = (r.term || '').toLowerCase();
-      return title.includes(q) || trim.includes(q) || term.includes(q);
-    }).slice(0, 4);
-
-    return { matchingCourses, matchingResources };
-  }, [searchQuery, courses, resources]);
-
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setShowSearchDropdown(false);
     if (location.pathname !== '/') {
       navigate('/');
     }
@@ -129,135 +88,33 @@ export const Navbar: React.FC = () => {
             </div>
           </Link>
 
-          {/* Search Bar in Desktop with Omni-Search Dropdown */}
-          <div ref={searchContainerRef} className="hidden md:flex flex-1 max-w-md mx-6 relative">
-            <form onSubmit={handleSearchSubmit} className="w-full">
-              <div className="relative w-full">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onFocus={() => setShowSearchDropdown(true)}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setShowSearchDropdown(true);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape') setShowSearchDropdown(false);
-                  }}
-                  placeholder="Search course code, solve, or topic (e.g. SPL, Algo)..."
-                  className="w-full pl-10 pr-12 py-2 text-sm rounded-full bg-gray-100 dark:bg-zinc-800/80 border border-transparent focus:border-[#FF6600] focus:bg-white dark:focus:bg-zinc-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none transition-all shadow-inner"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery('');
-                      setShowSearchDropdown(false);
-                    }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-            </form>
-
-            {/* Instant Omni-Search Dropdown Results */}
-            {showSearchDropdown && searchQuery.trim().length >= 2 && (searchResults.matchingCourses.length > 0 || searchResults.matchingResources.length > 0) && (
-              <div className="absolute left-0 right-0 top-full mt-2 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-2xl p-3 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 space-y-3">
-                
-                {/* Matching Courses */}
-                {searchResults.matchingCourses.length > 0 && (
-                  <div>
-                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 dark:text-zinc-500 px-2 mb-1.5 flex items-center space-x-1">
-                      <GraduationCap className="w-3.5 h-3.5 text-[#FF6600]" />
-                      <span>Courses</span>
-                    </div>
-                    <div className="space-y-1">
-                      {searchResults.matchingCourses.map(c => (
-                        <button
-                          key={`omnidrop-c-${c.id}`}
-                          type="button"
-                          onClick={() => {
-                            setShowSearchDropdown(false);
-                            setSearchQuery('');
-                            navigate(`/course/${c.id}`);
-                          }}
-                          className="w-full flex items-center justify-between p-2 rounded-xl text-left hover:bg-orange-50 dark:hover:bg-zinc-800 transition-colors group cursor-pointer"
-                        >
-                          <div className="flex items-center space-x-2.5 truncate">
-                            <span
-                              className="w-2.5 h-2.5 rounded-full shrink-0"
-                              style={{ backgroundColor: c.color || '#FF6600' }}
-                            />
-                            <div className="truncate">
-                              <span className="text-xs font-bold text-gray-900 dark:text-white group-hover:text-[#FF6600] transition-colors">
-                                {c.code}
-                              </span>
-                              <span className="text-xs text-gray-500 dark:text-zinc-400 ml-2 truncate">
-                                {c.title}
-                              </span>
-                            </div>
-                          </div>
-                          <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 shrink-0">
-                            {c.department}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Matching Notes & Solves */}
-                {searchResults.matchingResources.length > 0 && (
-                  <div className="pt-2 border-t border-gray-100 dark:border-zinc-800/80">
-                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 dark:text-zinc-500 px-2 mb-1.5 flex items-center space-x-1">
-                      <FileText className="w-3.5 h-3.5 text-blue-500" />
-                      <span>Direct Notes & Solves</span>
-                    </div>
-                    <div className="space-y-1">
-                      {searchResults.matchingResources.map(r => (
-                        <button
-                          key={`omnidrop-r-${r.id}`}
-                          type="button"
-                          onClick={() => {
-                            setShowSearchDropdown(false);
-                            setSearchQuery('');
-                            navigate(`/course/${r.courseId}?openResource=${r.id}`);
-                          }}
-                          className="w-full flex items-center justify-between p-2 rounded-xl text-left hover:bg-orange-50 dark:hover:bg-zinc-800 transition-colors group cursor-pointer"
-                        >
-                          <div className="flex items-center space-x-2 truncate">
-                            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-950/60 text-[#FF6600] shrink-0">
-                              {r.trimesterCode || 'NOTE'}
-                            </span>
-                            <span className="text-xs font-bold text-gray-900 dark:text-white group-hover:text-[#FF6600] truncate transition-colors">
-                              {r.title}
-                            </span>
-                          </div>
-                          <ArrowRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-[#FF6600] group-hover:translate-x-0.5 transition-all shrink-0" />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Dropdown Footer */}
-                <div className="pt-2 border-t border-gray-100 dark:border-zinc-800/80 flex items-center justify-between px-2 text-[10px] text-gray-400">
-                  <span>Press <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-zinc-800 font-mono text-[9px]">Enter</kbd> to view all</span>
-                  <button
-                    type="button"
-                    onClick={handleSearchSubmit}
-                    className="font-bold text-[#FF6600] hover:underline cursor-pointer"
-                  >
-                    View in Catalog &rarr;
-                  </button>
-                </div>
-
-              </div>
-            )}
-          </div>
+          {/* Search Bar in Desktop */}
+          <form onSubmit={handleSearchSubmit} className="hidden md:flex flex-1 max-w-md mx-6">
+            <div className="relative w-full">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  if (e.target.value.trim() && location.pathname !== '/') {
+                    navigate('/');
+                  }
+                }}
+                placeholder="Search course code, topic, or keyword (e.g. CSE 2118, Algo)..."
+                className="w-full pl-10 pr-4 py-2 text-sm rounded-full bg-gray-100 dark:bg-zinc-800/80 border border-transparent focus:border-[#FF6600] focus:bg-white dark:focus:bg-zinc-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none transition-all shadow-inner"
+              />
+              {searchQuery && (
+                <button 
+                  type="button" 
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </form>
 
           {/* Desktop Nav Actions */}
           <div className="hidden md:flex items-center space-x-1 sm:space-x-2">

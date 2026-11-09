@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import { 
   BookOpen, 
   Sparkles, 
@@ -10,16 +9,14 @@ import {
   Users, 
   Filter,
   CheckCircle2,
-  FileText,
-  ArrowRight,
-  Clock
+  FileText
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { CourseCard } from '../components/CourseCard';
 import { DepartmentFilter } from '../components/DepartmentFilter';
 
 export const HomePage: React.FC = () => {
-  const { courses, resources, contributors, visitorCount, selectedDepartment, searchQuery, setSearchQuery, pinnedCourseIds, recentViews, clearRecentViews } = useData();
+  const { courses, resources, contributors, visitorCount, selectedDepartment, searchQuery, setSearchQuery, pinnedCourseIds } = useData();
   const [selectedTrimester, setSelectedTrimester] = useState<number | 'all'>('all');
 
   // Filter courses by department, trimester, and search query
@@ -104,68 +101,6 @@ export const HomePage: React.FC = () => {
                 <div className="text-xs text-zinc-400 font-medium mt-0.5">Free Forever</div>
               </div>
             </div>
-          </div>
-        </section>
-      )}
-
-      {/* Continue Reading / Recently Opened Notes (Local Storage Powered) */}
-      {!searchQuery.trim() && recentViews && recentViews.length > 0 && (
-        <section className="space-y-3.5 animate-in fade-in duration-300">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="w-7 h-7 rounded-xl bg-orange-500/10 dark:bg-orange-500/20 text-[#FF6600] flex items-center justify-center">
-                <Clock className="w-4 h-4 text-[#FF6600]" />
-              </div>
-              <h2 className="text-base sm:text-lg font-black text-gray-900 dark:text-white">
-                Continue Reading
-              </h2>
-              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/60 text-[#FF6600]">
-                Recent Notes
-              </span>
-            </div>
-
-            <button
-              onClick={clearRecentViews}
-              className="text-xs text-gray-400 hover:text-rose-500 transition-colors cursor-pointer"
-              title="Clear recently viewed notes"
-            >
-              Clear History
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {recentViews.slice(0, 3).map((item) => (
-              <Link
-                key={`recent-${item.id}`}
-                to={`/course/${item.courseId}?openResource=${item.id}`}
-                className="group relative flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-[#1A1A1A] border border-gray-200/90 dark:border-zinc-800 hover:border-[#FF6600] dark:hover:border-[#FF6600] shadow-xs hover:shadow-md transition-all duration-200 hover:-translate-y-0.5"
-              >
-                <div className="flex items-center space-x-3 truncate">
-                  <div className="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-950/40 text-[#FF6600] flex items-center justify-center shrink-0 border border-orange-200/50 dark:border-orange-800/50 group-hover:scale-105 transition-transform">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <div className="truncate text-left">
-                    <div className="flex items-center space-x-1.5 mb-0.5">
-                      <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-300">
-                        {item.courseCode || 'COURSE'}
-                      </span>
-                      {item.trimesterCode && (
-                        <span className="text-[10px] font-bold text-orange-500">
-                          {item.trimesterCode}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs font-bold text-gray-900 dark:text-white truncate group-hover:text-[#FF6600] transition-colors">
-                      {item.title}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="shrink-0 pl-2 text-gray-400 group-hover:text-[#FF6600] transition-colors">
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                </div>
-              </Link>
-            ))}
           </div>
         </section>
       )}

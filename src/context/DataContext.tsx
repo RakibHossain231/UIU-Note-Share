@@ -1,7 +1,7 @@
 import { EmailOtpService } from '../services/emailOtpService';
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Course, ResourceItem, Contributor, NoteRequest, Department, AdminCredentials, PendingContribution, ResourceType } from '../types';
-import { StorageService, CreatorProfileData, RecentViewItem } from '../services/storageService';
+import { StorageService, CreatorProfileData } from '../services/storageService';
 import { SupabaseService } from '../services/supabaseService';
 import { checkSupabaseConnection } from '../services/supabaseClient';
 import { DepartmentInfo } from '../data/departments';
@@ -69,9 +69,6 @@ interface DataContextType {
   approveContribution: (id: string, options: { finalFileUrl: string; title: string; contributorName: string; department: string; batch?: string; profileUrl?: string; socialType?: 'facebook' | 'linkedin' | 'github' | 'email'; courseId: string; resourceType: ResourceType; trimesterCode?: string; term?: string }) => Promise<boolean>;
   rejectContribution: (id: string) => Promise<boolean>;
   deleteStorageFile: (storagePath: string) => Promise<boolean>;
-  recentViews: RecentViewItem[];
-  addRecentView: (item: RecentViewItem) => void;
-  clearRecentViews: () => void;
 }
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -112,17 +109,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [supabaseStatus, setSupabaseStatus] = useState<string>('Checking connection...');
   const [visitorCount, setVisitorCount] = useState<number>(() => StorageService.getVisitorCount());
   const [courseViews, setCourseViews] = useState<Record<string, number>>(() => StorageService.getCourseViews());
-  const [recentViews, setRecentViews] = useState<RecentViewItem[]>(() => StorageService.getRecentViews());
-
-  const addRecentView = (item: RecentViewItem) => {
-    const updated = StorageService.addRecentView(item);
-    setRecentViews(updated);
-  };
-
-  const clearRecentViews = () => {
-    StorageService.clearRecentViews();
-    setRecentViews([]);
-  };
 
   // Initialize local data immediately for instant rendering
   useEffect(() => {
@@ -797,9 +783,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         approveContribution: handleApproveContribution,
         rejectContribution: handleRejectContribution,
         deleteStorageFile: handleDeleteStorageFile,
-        recentViews,
-        addRecentView,
-        clearRecentViews,
       }}
     >
       {children}

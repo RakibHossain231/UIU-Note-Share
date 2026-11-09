@@ -38,7 +38,6 @@ export interface PdfModalViewerProps {
   availableResources?: ResourceItem[];
   onOpenResource?: (item: ResourceItem) => void;
   onAddTab?: (item: ResourceItem) => void;
-  initialSplitView?: boolean;
 }
 
 const getFileType = (url: string, title?: string): 'image' | 'doc' | 'pdf' => {
@@ -198,8 +197,7 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
   onToggleMinimize,
   availableResources = [],
   onOpenResource,
-  onAddTab,
-  initialSplitView
+  onAddTab
 }) => {
   // Normalize items list (supports both items prop and single item legacy prop)
   const currentItems = useMemo(() => {
@@ -222,14 +220,7 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
   const [tabSettings, setTabSettings] = useState<Record<string, TabSettings>>({});
 
   // Split View state
-  const [isSplitView, setIsSplitView] = useState<boolean>(Boolean(initialSplitView));
-
-  // Sync initialSplitView prop if provided
-  useEffect(() => {
-    if (initialSplitView !== undefined) {
-      setIsSplitView(initialSplitView);
-    }
-  }, [initialSplitView]);
+  const [isSplitView, setIsSplitView] = useState<boolean>(false);
   const [focusedPane, setFocusedPane] = useState<'left' | 'right'>('left');
   const [secondTabId, setSecondTabId] = useState<string | null>(null);
 
@@ -969,34 +960,6 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
 
           </div>
         </div>
-
-        {/* Mobile-Only Pane Switcher in Split View */}
-        {isSplitView && secondItem && (
-          <div className="md:hidden flex items-center justify-center px-2 py-1.5 bg-zinc-900 border-b border-zinc-800 gap-1.5 z-20">
-            <button
-              type="button"
-              onClick={() => setFocusedPane('left')}
-              className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all truncate text-center ${
-                focusedPane === 'left'
-                  ? 'bg-[#FF6600] text-white shadow-sm'
-                  : 'bg-zinc-800 text-zinc-400 hover:text-white'
-              }`}
-            >
-              1: {activeItem.title}
-            </button>
-            <button
-              type="button"
-              onClick={() => setFocusedPane('right')}
-              className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all truncate text-center ${
-                focusedPane === 'right'
-                  ? 'bg-[#FF6600] text-white shadow-sm'
-                  : 'bg-zinc-800 text-zinc-400 hover:text-white'
-              }`}
-            >
-              2: {secondItem.title}
-            </button>
-          </div>
-        )}
 
         {/* 3. MAIN VIEWER CONTENT AREA */}
         <div className="relative flex-1 w-full h-full bg-zinc-950 overflow-hidden flex flex-col md:flex-row">

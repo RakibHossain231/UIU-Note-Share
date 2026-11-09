@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router-dom';
+import React, { useState, useMemo } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { 
   ArrowLeft, 
   Bookmark, 
@@ -7,8 +7,7 @@ import {
   ChevronDown, 
   ArrowUpDown,
   Sparkles,
-  Award,
-  SquareSplitHorizontal
+  Award
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { ResourceItem } from '../types';
@@ -88,8 +87,7 @@ export const getCategoryForItem = (r: ResourceItem): CategoryKey => {
 
 export const CourseDetailPage: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
-  const [searchParams] = useSearchParams();
-  const { courses, resources, pinnedCourseIds, togglePinCourse, addRecentView } = useData();
+  const { courses, resources, pinnedCourseIds, togglePinCourse } = useData();
 
   // Selected Category (null = Level 1 Category Hub, string = Level 2 Trimester Grid)
   const [selectedCategory, setSelectedCategory] = useState<CategoryKey | null>(null);
@@ -108,21 +106,6 @@ export const CourseDetailPage: React.FC = () => {
     });
     setActiveTabId(item.id);
     setIsViewerMinimized(false);
-
-    if (course) {
-      addRecentView({
-        id: item.id,
-        title: item.title,
-        courseId: course.id,
-        courseCode: course.code,
-        courseTitle: course.title,
-        type: item.type,
-        trimesterCode: item.trimesterCode,
-        term: item.term,
-        fileUrl: item.fileUrl,
-        viewedAt: Date.now()
-      });
-    }
   };
 
   const handleCloseTab = (id: string) => {
@@ -274,60 +257,6 @@ export const CourseDetailPage: React.FC = () => {
   const visibleCategories = useMemo(() => {
     return CATEGORY_ORDER.filter(key => categoryData[key].count > 0);
   }, [categoryData]);
-
-  // Auto-open note if requested via URL param (?openResource=id)
-  useEffect(() => {
-    const openId = searchParams.get('openResource');
-    if (openId && courseResources.length > 0) {
-      const found = courseResources.find(r => r.id === openId);
-      if (found && !previewTabs.some(t => t.id === found.id)) {
-        handleOpenPreview(found);
-      }
-    }
-  }, [searchParams, courseResources]);
-
-  // Find matching Question or Solve counterpart for 1-click Split View comparison
-  const findCounterpart = (current: ResourceItem): ResourceItem | null => {
-    const isCurrentSol = isSolutionItem(current);
-    return courseResources.find(other => {
-      if (other.id === current.id) return false;
-      const isOtherSol = isSolutionItem(other);
-      if (isCurrentSol === isOtherSol) return false;
-
-      // Matching trimester (e.g. 231)
-      if (current.trimesterCode && other.trimesterCode && current.trimesterCode === other.trimesterCode) {
-        if (getCategoryForItem(current) === getCategoryForItem(other)) return true;
-      }
-      // Matching CT number
-      if (current.ctNumber && other.ctNumber && current.ctNumber === other.ctNumber) return true;
-      // Matching Assignment number
-      if (current.assignmentNumber && other.assignmentNumber && current.assignmentNumber === other.assignmentNumber) return true;
-
-      return false;
-    }) || null;
-  };
-
-  const handleOpenSplitPair = (e: React.MouseEvent, item1: ResourceItem, item2: ResourceItem) => {
-    e.stopPropagation();
-    setPreviewTabs([item1, item2]);
-    setActiveTabId(item1.id);
-    setIsViewerMinimized(false);
-
-    if (course) {
-      addRecentView({
-        id: item1.id,
-        title: item1.title,
-        courseId: course.id,
-        courseCode: course.code,
-        courseTitle: course.title,
-        type: item1.type,
-        trimesterCode: item1.trimesterCode,
-        term: item1.term,
-        fileUrl: item1.fileUrl,
-        viewedAt: Date.now()
-      });
-    }
-  };
 
   // Selected category items with sub-filter and sorting
   const activeItems = useMemo(() => {
@@ -700,24 +629,6 @@ export const CourseDetailPage: React.FC = () => {
                         <span>&rarr;</span>
                       </span>
                     </div>
-
-                    {/* 1-Click Split View Compare Button (Appears if Question has matching Solve or vice-versa) */}
-                    {(() => {
-                      const counterpart = findCounterpart(item);
-                      if (!counterpart) return null;
-                      const isSol = isSolutionItem(item);
-                      return (
-                        <button
-                          type="button"
-                          onClick={(e) => handleOpenSplitPair(e, isSol ? counterpart : item, isSol ? item : counterpart)}
-                          className="mt-2.5 w-full flex items-center justify-center space-x-1.5 py-1.5 px-3 rounded-xl bg-orange-500/10 hover:bg-[#FF6600] text-[#FF6600] hover:text-white dark:bg-orange-950/40 dark:hover:bg-[#FF6600] border border-orange-500/25 hover:border-transparent text-[11px] font-bold transition-all shadow-xs group/btn active:scale-95 cursor-pointer"
-                          title={isSol ? "Open side-by-side with Question in Split View" : "Open side-by-side with Solve in Split View"}
-                        >
-                          <SquareSplitHorizontal className="w-3.5 h-3.5" />
-                          <span>{isSol ? 'Compare with Question' : 'Compare with Solve'}</span>
-                        </button>
-                      );
-                    })()}
                   </div>
                 );
               })}
@@ -752,7 +663,6 @@ export const CourseDetailPage: React.FC = () => {
         availableResources={courseResources}
         onOpenResource={handleOpenPreview}
         onAddTab={handleAddTabRequest}
-        initialSplitView={previewTabs.length === 2}
       />
 
       {/* Bulk Download Progress Modal */}

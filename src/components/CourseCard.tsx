@@ -29,7 +29,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
     <Link
       to={`/course/${course.id}`}
       style={{ borderBottom: `5px solid ${cardColor}` }}
-      className="group relative flex flex-col justify-between bg-white dark:bg-[#1E1E1E] border border-gray-200/80 dark:border-zinc-800/80 hover:border-[#FF6600]/40 rounded-2xl p-6 shadow-xs hover:shadow-xl hover:shadow-orange-500/10 transition-all duration-200 hover:-translate-y-1"
+      className="group relative flex flex-col justify-between bg-white dark:bg-[#1E1E1E] border border-gray-200/80 dark:border-zinc-800/80 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-1"
     >
       <div>
         {/* Top Header: Code & Pin Button */}
