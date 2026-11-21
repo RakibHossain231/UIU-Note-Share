@@ -637,61 +637,77 @@ export const PdfModalViewer: React.FC<PdfModalViewerProps> = ({
           </div>
         )}
 
-        {/* Document Body */}
-        <div className="relative flex-1 w-full h-full overflow-hidden flex items-center justify-center p-1 sm:p-2">
+        {/* Document Body - Top-Anchored Scrollable View (Idea 1) */}
+        <div className="relative flex-1 w-full h-full overflow-hidden">
           {fType === 'image' ? (
             <div 
-              className="w-full h-full flex items-center justify-center overflow-auto"
+              className="w-full h-full overflow-auto flex flex-col items-center justify-start p-2 sm:p-4 select-none"
               style={{
                 filter: settings.darkInvert ? 'invert(90%) hue-rotate(180deg)' : 'none',
               }}
             >
-              <img
-                key={iframeKey}
-                src={imageSrc}
-                alt={docItem.title}
-                onLoad={() => setLoadingMap(prev => ({ ...prev, [docItem.id]: false }))}
-                onError={() => setLoadingMap(prev => ({ ...prev, [docItem.id]: false }))}
-                className="max-w-full max-h-full object-contain select-none transition-transform duration-150 rounded-lg shadow-xl"
+              <div 
+                className="transition-transform duration-150 flex flex-col items-center justify-start"
                 style={{
                   transform: `scale(${settings.zoom / 100}) rotate(${settings.rotation}deg)`,
-                  transformOrigin: 'center center'
+                  transformOrigin: 'top center',
+                  marginBottom: settings.zoom > 100 ? `${(settings.zoom - 100) * 8 + 48}px` : '48px',
                 }}
-              />
+              >
+                <img
+                  key={iframeKey}
+                  src={imageSrc}
+                  alt={docItem.title}
+                  onLoad={() => setLoadingMap(prev => ({ ...prev, [docItem.id]: false }))}
+                  onError={() => setLoadingMap(prev => ({ ...prev, [docItem.id]: false }))}
+                  className="max-w-full object-contain select-none rounded-lg shadow-xl"
+                  style={{
+                    maxHeight: settings.zoom <= 100 ? 'calc(94vh - 130px)' : 'none',
+                  }}
+                />
+              </div>
             </div>
           ) : (
             <div 
-              className="relative w-full h-full transition-all duration-200 flex items-center justify-center overflow-hidden"
+              className="w-full h-full overflow-auto flex flex-col items-center justify-start p-1 sm:p-2"
               style={{
                 filter: settings.darkInvert ? 'invert(90%) hue-rotate(180deg)' : 'none',
-                transform: `scale(${settings.zoom / 100}) rotate(${settings.rotation}deg)`,
-                transformOrigin: 'center center'
               }}
             >
-              <iframe
-                key={iframeKey}
-                src={embedUrl}
-                title={docItem.title}
-                onLoad={() => setLoadingMap(prev => ({ ...prev, [docItem.id]: false }))}
-                className="w-full h-full border-0 bg-white rounded-lg shadow-sm"
-                allow="autoplay"
-                loading="lazy"
-              />
-
-              {/* Protective Shield Blocker for Google Drive popup */}
               <div 
-                className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 w-10 h-10 sm:w-11 sm:h-11 z-20 pointer-events-auto bg-[#181818] rounded-xl flex items-center justify-center shadow-lg border border-zinc-700/60 select-none cursor-default"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
+                className="relative w-full h-full transition-all duration-200 flex flex-col items-center justify-start"
+                style={{
+                  transform: `scale(${settings.zoom / 100}) rotate(${settings.rotation}deg)`,
+                  transformOrigin: 'top center',
+                  minHeight: '100%',
+                  marginBottom: settings.zoom > 100 ? `${(settings.zoom - 100) * 6 + 24}px` : '0px',
                 }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                title="UIU Note Share Reader"
               >
-                <span className="text-[10px] font-black text-[#FF6600] tracking-wider uppercase">UIU</span>
+                <iframe
+                  key={iframeKey}
+                  src={embedUrl}
+                  title={docItem.title}
+                  onLoad={() => setLoadingMap(prev => ({ ...prev, [docItem.id]: false }))}
+                  className="w-full h-full min-h-[75vh] border-0 bg-white rounded-lg shadow-sm"
+                  allow="autoplay"
+                  loading="lazy"
+                />
+
+                {/* Protective Shield Blocker for Google Drive popup */}
+                <div 
+                  className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 w-10 h-10 sm:w-11 sm:h-11 z-20 pointer-events-auto bg-[#181818] rounded-xl flex items-center justify-center shadow-lg border border-zinc-700/60 select-none cursor-default"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  title="UIU Note Share Reader"
+                >
+                  <span className="text-[10px] font-black text-[#FF6600] tracking-wider uppercase">UIU</span>
+                </div>
               </div>
             </div>
           )}
